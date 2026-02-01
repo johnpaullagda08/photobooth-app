@@ -75,7 +75,7 @@ export function BoxPropertiesPanel({
                 <Move className="w-3.5 h-3.5" />
                 Position
               </Label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">X</span>
@@ -111,7 +111,7 @@ export function BoxPropertiesPanel({
                 <Maximize2 className="w-3.5 h-3.5" />
                 Size
               </Label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">Width</span>
@@ -142,7 +142,7 @@ export function BoxPropertiesPanel({
             </div>
 
             {/* Precise Input */}
-            <div className="grid grid-cols-4 gap-2 pt-2 border-t">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">X %</Label>
                 <Input

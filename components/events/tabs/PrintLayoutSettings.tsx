@@ -2,12 +2,13 @@
 
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Layout, Trash2, Info } from 'lucide-react';
+import { Layout, Trash2, Info, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { LayoutCanvas, TemplatePanel, BoxPropertiesPanel, type LayoutTemplate } from '@/components/layout-editor';
 import type { PrintLayoutConfig, BoxConfig, PaperSize } from '@/lib/events/types';
@@ -20,6 +21,14 @@ interface PrintLayoutSettingsProps {
 
 export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayoutSettingsProps) {
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
+  const [activeTemplateName, setActiveTemplateName] = useState<string | null>(null);
+
+  // Handle active template change
+  const handleActiveTemplateChange = useCallback((templateId: string | null, templateName: string | null) => {
+    setActiveTemplateId(templateId);
+    setActiveTemplateName(templateName);
+  }, []);
 
   // Get selected box
   const selectedBox = config.boxes.find((b) => b.id === selectedBoxId) || null;
@@ -147,18 +156,28 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
               currentFrameTemplate={config.frameTemplate}
               currentBackgroundColor={config.backgroundColor}
               onApplyTemplate={handleApplyTemplate}
+              activeTemplateId={activeTemplateId}
+              onActiveTemplateChange={handleActiveTemplateChange}
             />
           </div>
         </div>
 
         {/* Main Content */}
         <div className="lg:col-span-6 space-y-6">
-          {/* Paper Size Info */}
+          {/* Paper Size Info & Active Template */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Layout className="w-4 h-4" />
-                <CardTitle className="text-base">Layout Editor</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layout className="w-4 h-4" />
+                  <CardTitle className="text-base">Layout Editor</CardTitle>
+                </div>
+                {activeTemplateName && (
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    <Pencil className="w-3 h-3 mr-1" />
+                    Editing: {activeTemplateName}
+                  </Badge>
+                )}
               </div>
               <CardDescription>
                 Drag, resize, and arrange photo boxes on the canvas
@@ -207,6 +226,8 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
               currentFrameTemplate={config.frameTemplate}
               currentBackgroundColor={config.backgroundColor}
               onApplyTemplate={handleApplyTemplate}
+              activeTemplateId={activeTemplateId}
+              onActiveTemplateChange={handleActiveTemplateChange}
             />
           </div>
 

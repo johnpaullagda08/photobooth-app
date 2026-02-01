@@ -56,6 +56,10 @@ interface TemplatePanelProps {
   currentFrameTemplate?: string | null;
   currentBackgroundColor?: string;
   onApplyTemplate: (template: LayoutTemplate) => void;
+  /** ID of the currently active/editing template */
+  activeTemplateId?: string | null;
+  /** Callback when active template changes */
+  onActiveTemplateChange?: (templateId: string | null, templateName: string | null) => void;
 }
 
 const STORAGE_KEY = 'photobooth_layout_templates';
@@ -196,11 +200,13 @@ export function TemplatePanel({
   currentFrameTemplate,
   currentBackgroundColor = '#ffffff',
   onApplyTemplate,
+  activeTemplateId,
+  onActiveTemplateChange,
 }: TemplatePanelProps) {
   const [userTemplates, setUserTemplates] = useState<LayoutTemplate[]>([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [clickFeedbackId, setClickFeedbackId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Built-in templates for current paper size
@@ -270,17 +276,20 @@ export function TemplatePanel({
   // Handle apply template
   const handleApplyTemplate = useCallback(
     (template: LayoutTemplate) => {
-      setSelectedTemplateId(template.id);
+      // Visual click feedback
+      setClickFeedbackId(template.id);
+      setTimeout(() => setClickFeedbackId(null), 300);
+
+      // Notify parent of active template change
+      onActiveTemplateChange?.(template.id, template.name);
+
       // Pass the full template with deep-copied boxes
       onApplyTemplate({
         ...template,
         boxes: template.boxes.map((box) => ({ ...box })),
       });
-
-      // Clear selection after a delay for visual feedback
-      setTimeout(() => setSelectedTemplateId(null), 500);
     },
-    [onApplyTemplate]
+    [onApplyTemplate, onActiveTemplateChange]
   );
 
   // Handle export template
@@ -441,7 +450,8 @@ export function TemplatePanel({
                   <TemplateItem
                     key={template.id}
                     template={template}
-                    isSelected={selectedTemplateId === template.id}
+                    isActive={activeTemplateId === template.id}
+                    isClicked={clickFeedbackId === template.id}
                     onApply={() => handleApplyTemplate(template)}
                   />
                 ))}
@@ -463,7 +473,8 @@ export function TemplatePanel({
                     <TemplateItem
                       key={template.id}
                       template={template}
-                      isSelected={selectedTemplateId === template.id}
+                      isActive={activeTemplateId === template.id}
+                      isClicked={clickFeedbackId === template.id}
                       onApply={() => handleApplyTemplate(template)}
                       onDelete={() => handleDeleteTemplate(template.id)}
                       onExport={() => handleExportTemplate(template)}
@@ -534,7 +545,10 @@ export function TemplatePanel({
 // Template Item Component
 interface TemplateItemProps {
   template: LayoutTemplate;
-  isSelected: boolean;
+  /** This template is currently being edited */
+  isActive: boolean;
+  /** Brief click feedback animation */
+  isClicked?: boolean;
   onApply: () => void;
   onDelete?: () => void;
   onExport?: () => void;
@@ -542,7 +556,8 @@ interface TemplateItemProps {
 
 function TemplateItem({
   template,
-  isSelected,
+  isActive,
+  isClicked,
   onApply,
   onDelete,
   onExport,
@@ -554,39 +569,54 @@ function TemplateItem({
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        'flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors',
-        isSelected
-          ? 'border-primary bg-primary/10'
+        'flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all',
+        isActive
+          ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+          : isClicked
+          ? 'border-primary/70 bg-primary/5'
           : 'border-border hover:border-primary/50'
       )}
       onClick={onApply}
     >
       <div
         className={cn(
-          'p-2 rounded-md',
-          template.isBuiltIn ? 'bg-blue-500/10' : 'bg-green-500/10'
+          'p-2 rounded-md flex-shrink-0',
+          isActive
+            ? 'bg-primary/20'
+            : template.isBuiltIn
+            ? 'bg-blue-500/10'
+            : 'bg-green-500/10'
         )}
       >
         <Icon
           className={cn(
             'w-4 h-4',
-            template.isBuiltIn ? 'text-blue-500' : 'text-green-500'
+            isActive
+              ? 'text-primary'
+              : template.isBuiltIn
+              ? 'text-blue-500'
+              : 'text-green-500'
           )}
         />
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{template.name}</p>
+        <p className={cn(
+          'text-sm font-medium truncate',
+          isActive && 'text-primary'
+        )}>
+          {template.name}
+        </p>
         <p className="text-xs text-muted-foreground">
           {template.boxes.length} photo{template.boxes.length !== 1 ? 's' : ''}
         </p>
       </div>
 
-      {isSelected && (
+      {isActive && (
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="w-5 h-5 rounded-full bg-primary flex items-center justify-center"
+          className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0"
         >
           <Check className="w-3 h-3 text-primary-foreground" />
         </motion.div>
@@ -598,7 +628,7 @@ function TemplateItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-7 w-7 flex-shrink-0"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreVertical className="w-4 h-4" />
