@@ -110,6 +110,13 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
   }, []);
 
   const fetchDevices = useCallback(async () => {
+    // Check if mediaDevices API is available
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      setError('Camera API not available in this browser.');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -201,6 +208,12 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
       previewStream.getTracks().forEach((track) => track.stop());
     }
 
+    // Check if mediaDevices API is available
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      setPreviewStream(null);
+      return;
+    }
+
     if (config.source !== 'webcam' && config.source !== 'hdmi') {
       setPreviewStream(null);
       return;
@@ -236,6 +249,11 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
 
   // Listen for device changes (camera plugged in/unplugged)
   useEffect(() => {
+    // Check if mediaDevices API is available (not available in all environments)
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+      return;
+    }
+
     const handleDeviceChange = () => {
       fetchDevices();
     };

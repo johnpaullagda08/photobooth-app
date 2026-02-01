@@ -13,6 +13,9 @@ import { cn } from '@/lib/utils';
 import { LayoutCanvas, TemplatePanel, BoxPropertiesPanel, type LayoutTemplate } from '@/components/layout-editor';
 import type { PrintLayoutConfig, BoxConfig, PaperSize } from '@/lib/events/types';
 
+// Storage key for user templates (must match TemplatePanel)
+const TEMPLATE_STORAGE_KEY = 'photobooth_layout_templates';
+
 interface PrintLayoutSettingsProps {
   config: PrintLayoutConfig;
   onUpdate: (config: PrintLayoutConfig) => void;
@@ -29,6 +32,30 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
     setActiveTemplateId(templateId);
     setActiveTemplateName(templateName);
   }, []);
+
+  // Auto-save background/frame changes to user templates
+  // Only saves to user templates (those starting with 'user-' or 'imported-')
+  const autoSaveToUserTemplate = useCallback((updates: Partial<LayoutTemplate>) => {
+    if (!activeTemplateId) return;
+
+    // Only auto-save to user templates, not built-in templates
+    const isUserTemplate = activeTemplateId.startsWith('user-') || activeTemplateId.startsWith('imported-');
+    if (!isUserTemplate) return;
+
+    try {
+      const stored = localStorage.getItem(TEMPLATE_STORAGE_KEY);
+      if (!stored) return;
+
+      const templates: LayoutTemplate[] = JSON.parse(stored);
+      const updatedTemplates = templates.map((t) =>
+        t.id === activeTemplateId ? { ...t, ...updates } : t
+      );
+
+      localStorage.setItem(TEMPLATE_STORAGE_KEY, JSON.stringify(updatedTemplates));
+    } catch (err) {
+      console.error('Failed to auto-save template:', err);
+    }
+  }, [activeTemplateId]);
 
   // Get selected box
   const selectedBox = config.boxes.find((b) => b.id === selectedBoxId) || null;
@@ -74,8 +101,8 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
     [config, onUpdate, selectedBoxId]
   );
 
-  // Handle apply template - applies template layout and optionally background/frame
-  // If template has null background/frame, preserve current values
+  // Handle apply template - applies template's EXACT settings (no inheritance)
+  // Each template maintains its own independent background
   const handleApplyTemplate = useCallback(
     (template: LayoutTemplate) => {
       // Generate new IDs to avoid conflicts
@@ -84,27 +111,15 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
         id: `photo-${index + 1}-${Date.now()}`,
       }));
 
-      // Determine which background settings to use:
-      // - If template has explicit values, use them
-      // - If template has null values, preserve current config
-      const newBackgroundImage = template.backgroundImage !== null
-        ? template.backgroundImage
-        : config.backgroundImage;
-
-      const newFrameTemplate = template.frameTemplate !== null
-        ? template.frameTemplate
-        : config.frameTemplate;
-
-      // For backgroundColor, always use template value (it's never null, defaults to #ffffff)
-      const newBackgroundColor = template.backgroundColor || config.backgroundColor || '#ffffff';
-
-      // Update config with template settings, preserving backgrounds when template has null
+      // ALWAYS apply the template's exact background settings
+      // This ensures each template maintains its own independent state
+      // Built-in templates with null background will show no background (white)
       onUpdate({
         ...config,
         boxes: newBoxes,
-        backgroundImage: newBackgroundImage,
-        frameTemplate: newFrameTemplate,
-        backgroundColor: newBackgroundColor,
+        backgroundImage: template.backgroundImage,  // Apply exactly (even if null)
+        frameTemplate: template.frameTemplate,      // Apply exactly (even if null)
+        backgroundColor: template.backgroundColor || '#ffffff',
         // Update photoCount to match the number of boxes
         photoCount: Math.min(4, Math.max(1, newBoxes.length)) as 1 | 3 | 4,
       });
@@ -113,35 +128,55 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
     [config, onUpdate]
   );
 
-  // Handle frame upload
+  // Handle frame upload - auto-saves to user templates
   const handleFrameUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = () => {
-          onUpdate({ ...config, frameTemplate: reader.result as string });
+          const frameTemplate = reader.result as string;
+          // Update event config
+          onUpdate({ ...config, frameTemplate });
+          // Auto-save to user template if active
+          autoSaveToUserTemplate({ frameTemplate });
         };
         reader.readAsDataURL(file);
       }
     },
-    [config, onUpdate]
+    [config, onUpdate, autoSaveToUserTemplate]
   );
 
-  // Handle background image upload
+  // Handle background image upload - auto-saves to user templates
   const handleBackgroundImageUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onload = () => {
-          onUpdate({ ...config, backgroundImage: reader.result as string });
+          const backgroundImage = reader.result as string;
+          // Update event config
+          onUpdate({ ...config, backgroundImage });
+          // Auto-save to user template if active
+          autoSaveToUserTemplate({ backgroundImage });
         };
         reader.readAsDataURL(file);
       }
     },
-    [config, onUpdate]
+    [config, onUpdate, autoSaveToUserTemplate]
   );
+
+  // Handle removing background image - auto-saves to user templates
+  const handleRemoveBackground = useCallback(() => {
+    onUpdate({ ...config, backgroundImage: null });
+    autoSaveToUserTemplate({ backgroundImage: null });
+  }, [config, onUpdate, autoSaveToUserTemplate]);
+
+  // Handle removing frame overlay - auto-saves to user templates
+  const handleRemoveFrame = useCallback(() => {
+    onUpdate({ ...config, frameTemplate: null });
+    autoSaveToUserTemplate({ frameTemplate: null });
+  }, [config, onUpdate, autoSaveToUserTemplate]);
 
   return (
     <div className="h-full">
@@ -251,7 +286,7 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => onUpdate({ ...config, backgroundImage: null })}
+                    onClick={handleRemoveBackground}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -289,7 +324,7 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
                   <Button
                     variant="outline"
                     size="icon"
-                    onClick={() => onUpdate({ ...config, frameTemplate: null })}
+                    onClick={handleRemoveFrame}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
