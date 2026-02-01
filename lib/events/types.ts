@@ -106,6 +106,8 @@ export interface PrintLayoutConfig {
   spacing: number;
   boxes: BoxConfig[];
   frameTemplate: string | null;
+  backgroundImage: string | null;
+  backgroundColor: string;
   overlays: OverlayConfig[];
 }
 
@@ -132,13 +134,15 @@ export interface PrinterConfig {
   isConnected: boolean;
 }
 
+export type PaperSize = 'strip' | '4r';
+
 export interface PhotoboothEvent {
   id: string;
   name: string;
   date: string; // ISO date string
   createdAt: number;
   updatedAt: number;
-  template: 'wedding' | 'birthday' | 'corporate' | 'custom';
+  paperSize: PaperSize; // Primary paper size selection
 
   launchPage: LaunchPageConfig;
   camera: CameraConfig;
@@ -244,6 +248,8 @@ export const DEFAULT_PRINT_LAYOUT: PrintLayoutConfig = {
     { id: 'photo-4', label: 'Photo 4', x: 5, y: 77, width: 90, height: 22 },
   ],
   frameTemplate: null,
+  backgroundImage: null,
+  backgroundColor: '#ffffff',
   overlays: [],
 };
 
@@ -287,6 +293,21 @@ export const LAYOUT_PRESETS: Record<string, { grid: (count: number) => BoxConfig
       ];
     },
   },
+  // 4R landscape template - 2 rows of 2 photos
+  '4r-landscape': {
+    grid: () => {
+      const margin = 4;
+      const spacing = 2;
+      const boxWidth = (100 - margin * 2 - spacing) / 2;
+      const boxHeight = (100 - margin * 2 - spacing) / 2;
+      return [
+        { id: 'photo-1', label: 'Photo 1', x: margin, y: margin, width: boxWidth, height: boxHeight },
+        { id: 'photo-2', label: 'Photo 2', x: margin + boxWidth + spacing, y: margin, width: boxWidth, height: boxHeight },
+        { id: 'photo-3', label: 'Photo 3', x: margin, y: margin + boxHeight + spacing, width: boxWidth, height: boxHeight },
+        { id: 'photo-4', label: 'Photo 4', x: margin + boxWidth + spacing, y: margin + boxHeight + spacing, width: boxWidth, height: boxHeight },
+      ];
+    },
+  },
 };
 
 export const DEFAULT_PRINTING: PrintingConfig = {
@@ -305,268 +326,56 @@ export const DEFAULT_PRINTING: PrintingConfig = {
   printerProfile: null,
 };
 
+// Default 4R print layout (landscape orientation)
+export const DEFAULT_4R_PRINT_LAYOUT: PrintLayoutConfig = {
+  format: '4r-grid-2x2',
+  orientation: 'landscape',
+  photoCount: 4,
+  layoutPreset: 'grid',
+  margins: { top: 4, right: 4, bottom: 4, left: 4 },
+  spacing: 2,
+  boxes: [
+    { id: 'photo-1', label: 'Photo 1', x: 4, y: 4, width: 45, height: 44 },
+    { id: 'photo-2', label: 'Photo 2', x: 51, y: 4, width: 45, height: 44 },
+    { id: 'photo-3', label: 'Photo 3', x: 4, y: 52, width: 45, height: 44 },
+    { id: 'photo-4', label: 'Photo 4', x: 51, y: 52, width: 45, height: 44 },
+  ],
+  frameTemplate: null,
+  backgroundImage: null,
+  backgroundColor: '#ffffff',
+  overlays: [],
+};
+
 export const DEFAULT_PRINTER: PrinterConfig = {
   selectedPrinterId: null,
   printerName: null,
   isConnected: false,
 };
 
-// Event templates
-export const EVENT_TEMPLATES: Record<string, Partial<PhotoboothEvent>> = {
-  wedding: {
-    template: 'wedding',
-    launchPage: {
-      ...DEFAULT_LAUNCH_PAGE,
-      backgroundColor: '#f8f5f2',
-      elements: [
-        {
-          id: 'title',
-          type: 'text',
-          x: 50,
-          y: 25,
-          width: 80,
-          height: 15,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 1,
-          properties: {
-            text: 'John & Jane',
-            fontSize: 56,
-            fontFamily: 'Playfair Display',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            color: '#8b7355',
-          },
-        },
-        {
-          id: 'subtitle',
-          type: 'text',
-          x: 50,
-          y: 40,
-          width: 60,
-          height: 10,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 2,
-          properties: {
-            text: 'Our Wedding Day',
-            fontSize: 28,
-            fontFamily: 'Playfair Display',
-            fontWeight: 'normal',
-            textAlign: 'center',
-            color: '#a08060',
-          },
-        },
-        {
-          id: 'date-text',
-          type: 'text',
-          x: 50,
-          y: 52,
-          width: 40,
-          height: 8,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 3,
-          properties: {
-            text: 'January 26, 2026',
-            fontSize: 18,
-            fontFamily: 'Inter',
-            fontWeight: 'normal',
-            textAlign: 'center',
-            color: '#888888',
-          },
-        },
-        {
-          id: 'start-button',
-          type: 'button',
-          x: 50,
-          y: 75,
-          width: 35,
-          height: 12,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 4,
-          properties: {
-            buttonText: 'Capture Memories',
-            buttonColor: '#8b7355',
-            buttonTextColor: '#ffffff',
-            buttonBorderRadius: 30,
-          },
-        },
-      ],
-    },
-  },
-  birthday: {
-    template: 'birthday',
-    launchPage: {
-      ...DEFAULT_LAUNCH_PAGE,
-      backgroundColor: '#fef3c7',
-      elements: [
-        {
-          id: 'title',
-          type: 'text',
-          x: 50,
-          y: 25,
-          width: 80,
-          height: 15,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 1,
-          properties: {
-            text: '🎉 Happy Birthday! 🎂',
-            fontSize: 48,
-            fontFamily: 'Comic Sans MS',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            color: '#ec4899',
-          },
-        },
-        {
-          id: 'subtitle',
-          type: 'text',
-          x: 50,
-          y: 42,
-          width: 60,
-          height: 10,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 2,
-          properties: {
-            text: "Let's celebrate!",
-            fontSize: 28,
-            fontFamily: 'Inter',
-            fontWeight: 'normal',
-            textAlign: 'center',
-            color: '#f97316',
-          },
-        },
-        {
-          id: 'start-button',
-          type: 'button',
-          x: 50,
-          y: 70,
-          width: 35,
-          height: 14,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 3,
-          properties: {
-            buttonText: '📸 Take Photos!',
-            buttonColor: '#ec4899',
-            buttonTextColor: '#ffffff',
-            buttonBorderRadius: 20,
-          },
-        },
-      ],
-    },
-  },
-  corporate: {
-    template: 'corporate',
-    launchPage: {
-      ...DEFAULT_LAUNCH_PAGE,
-      backgroundColor: '#0f172a',
-      elements: [
-        {
-          id: 'logo',
-          type: 'logo',
-          x: 50,
-          y: 20,
-          width: 20,
-          height: 15,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 1,
-          properties: {
-            src: '',
-            objectFit: 'contain',
-          },
-        },
-        {
-          id: 'title',
-          type: 'text',
-          x: 50,
-          y: 40,
-          width: 80,
-          height: 12,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 2,
-          properties: {
-            text: 'Company Event 2026',
-            fontSize: 42,
-            fontFamily: 'Inter',
-            fontWeight: 'bold',
-            textAlign: 'center',
-            color: '#ffffff',
-          },
-        },
-        {
-          id: 'subtitle',
-          type: 'text',
-          x: 50,
-          y: 52,
-          width: 60,
-          height: 8,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 3,
-          properties: {
-            text: 'Professional Photo Experience',
-            fontSize: 20,
-            fontFamily: 'Inter',
-            fontWeight: 'normal',
-            textAlign: 'center',
-            color: '#94a3b8',
-          },
-        },
-        {
-          id: 'start-button',
-          type: 'button',
-          x: 50,
-          y: 72,
-          width: 28,
-          height: 11,
-          rotation: 0,
-          visible: true,
-          locked: false,
-          zIndex: 4,
-          properties: {
-            buttonText: 'Begin Session',
-            buttonColor: '#3b82f6',
-            buttonTextColor: '#ffffff',
-            buttonBorderRadius: 8,
-          },
-        },
-      ],
-    },
-  },
+// Paper size display names
+export const PAPER_SIZE_CONFIG: Record<PaperSize, { label: string; description: string }> = {
+  strip: { label: 'Strip', description: '2x6 inch photo strip' },
+  '4r': { label: '4R', description: '4x6 inch photo (landscape)' },
 };
 
-export function createDefaultEvent(template: 'wedding' | 'birthday' | 'corporate' = 'wedding'): PhotoboothEvent {
+export function createDefaultEvent(paperSize: PaperSize = 'strip'): PhotoboothEvent {
   const now = Date.now();
-  const templateConfig = EVENT_TEMPLATES[template] || {};
+  const paperSizeLabel = PAPER_SIZE_CONFIG[paperSize].label;
+
+  // Select appropriate print layout based on paper size
+  const printLayout = paperSize === '4r' ? DEFAULT_4R_PRINT_LAYOUT : DEFAULT_PRINT_LAYOUT;
 
   return {
     id: crypto.randomUUID ? crypto.randomUUID() : `event-${now}`,
-    name: `New ${template.charAt(0).toUpperCase() + template.slice(1)} Event`,
+    name: `New ${paperSizeLabel} Event`,
     date: new Date().toISOString().split('T')[0],
     createdAt: now,
     updatedAt: now,
-    template,
-    launchPage: templateConfig.launchPage || DEFAULT_LAUNCH_PAGE,
+    paperSize,
+    launchPage: DEFAULT_LAUNCH_PAGE,
     camera: DEFAULT_CAMERA,
     countdown: DEFAULT_COUNTDOWN,
-    printLayout: DEFAULT_PRINT_LAYOUT,
+    printLayout,
     printing: DEFAULT_PRINTING,
     printer: DEFAULT_PRINTER,
   };

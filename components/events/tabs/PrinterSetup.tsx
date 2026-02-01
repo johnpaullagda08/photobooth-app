@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Printer,
@@ -8,10 +8,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Wifi,
   Usb,
   Settings,
   TestTube,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,28 +27,28 @@ interface PrinterSetupProps {
 interface DetectedPrinter {
   id: string;
   name: string;
-  type: 'usb' | 'network';
-  status: 'ready' | 'busy' | 'error' | 'offline';
+  type: 'usb' | 'system';
+  status: 'ready' | 'checking' | 'unavailable';
+  vendorId?: number;
+  productId?: number;
 }
 
-// Simulated printer detection - in real app, this would use Web USB API or backend
-const detectPrinters = async (): Promise<DetectedPrinter[]> => {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-
-  // Return simulated printers for development
-  return [
-    { id: 'printer-1', name: 'DNP DS-RX1', type: 'usb', status: 'ready' },
-    { id: 'printer-2', name: 'HiTi P525L', type: 'usb', status: 'offline' },
-    { id: 'printer-3', name: 'Canon SELPHY CP1500', type: 'network', status: 'ready' },
-  ];
-};
+// WebUSB supported printer vendors (common thermal photo printers)
+const SUPPORTED_VENDORS = [
+  { vendorId: 0x04f9, name: 'Brother' },
+  { vendorId: 0x1343, name: 'Citizen' },
+  { vendorId: 0x0dd4, name: 'Custom' },
+  { vendorId: 0x04b8, name: 'Epson' },
+  { vendorId: 0x1504, name: 'DNP' },
+  { vendorId: 0x0d16, name: 'HiTi' },
+  { vendorId: 0x040a, name: 'Kodak' },
+  { vendorId: 0x04a9, name: 'Canon' },
+];
 
 const statusConfig = {
   ready: { icon: CheckCircle2, label: 'Ready', color: 'text-green-500', bg: 'bg-green-500/10' },
-  busy: { icon: AlertCircle, label: 'Busy', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  error: { icon: XCircle, label: 'Error', color: 'text-red-500', bg: 'bg-red-500/10' },
-  offline: { icon: XCircle, label: 'Offline', color: 'text-muted-foreground', bg: 'bg-muted' },
+  checking: { icon: RefreshCw, label: 'Checking...', color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
+  unavailable: { icon: XCircle, label: 'Unavailable', color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
@@ -56,17 +56,101 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [webUsbSupported, setWebUsbSupported] = useState(false);
 
+  // Check WebUSB support on mount
+  useEffect(() => {
+    setWebUsbSupported('usb' in navigator);
+  }, []);
+
+  // Scan for USB printers using WebUSB API
+  const scanForUsbPrinters = useCallback(async (): Promise<DetectedPrinter[]> => {
+    if (!('usb' in navigator)) {
+      return [];
+    }
+
+    try {
+      // Get already paired devices
+      const devices = await (navigator as Navigator & { usb: { getDevices(): Promise<USBDevice[]> } }).usb.getDevices();
+
+      const printers: DetectedPrinter[] = devices
+        .filter(device => {
+          // Check if it's a known printer vendor
+          return SUPPORTED_VENDORS.some(v => v.vendorId === device.vendorId);
+        })
+        .map(device => {
+          const vendor = SUPPORTED_VENDORS.find(v => v.vendorId === device.vendorId);
+          return {
+            id: `usb-${device.vendorId}-${device.productId}`,
+            name: device.productName || `${vendor?.name || 'Unknown'} Printer`,
+            type: 'usb' as const,
+            status: 'ready' as const,
+            vendorId: device.vendorId,
+            productId: device.productId,
+          };
+        });
+
+      return printers;
+    } catch (err) {
+      console.error('WebUSB error:', err);
+      return [];
+    }
+  }, []);
+
+  // Request USB device pairing
+  const requestUsbPrinter = async () => {
+    if (!('usb' in navigator)) {
+      setError('WebUSB is not supported in this browser. Use Chrome or Edge.');
+      return;
+    }
+
+    try {
+      const usbNavigator = navigator as Navigator & {
+        usb: {
+          requestDevice(options: { filters: Array<{ vendorId?: number }> }): Promise<USBDevice>
+        }
+      };
+
+      // Request any USB device - user will select from system dialog
+      const device = await usbNavigator.usb.requestDevice({
+        filters: SUPPORTED_VENDORS.map(v => ({ vendorId: v.vendorId })),
+      });
+
+      if (device) {
+        // Re-scan to include the newly paired device
+        await scanForPrinters();
+      }
+    } catch (err) {
+      // User cancelled or no device selected
+      if ((err as Error).name !== 'NotFoundError') {
+        setError('Failed to connect to USB printer.');
+        console.error('USB request error:', err);
+      }
+    }
+  };
+
+  // Main scan function
   const scanForPrinters = async () => {
     setIsScanning(true);
     setError(null);
+
     try {
-      const detected = await detectPrinters();
-      setPrinters(detected);
+      const usbPrinters = await scanForUsbPrinters();
+
+      // Always add system printer option
+      const systemPrinter: DetectedPrinter = {
+        id: 'system-default',
+        name: 'System Default Printer',
+        type: 'system',
+        status: 'ready',
+      };
+
+      const allPrinters = [systemPrinter, ...usbPrinters];
+      setPrinters(allPrinters);
 
       // Update connection status if current printer is found
       if (config.selectedPrinterId) {
-        const currentPrinter = detected.find((p) => p.id === config.selectedPrinterId);
+        const currentPrinter = allPrinters.find((p) => p.id === config.selectedPrinterId);
         if (currentPrinter) {
           onUpdate({
             ...config,
@@ -78,7 +162,7 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
         }
       }
     } catch (err) {
-      setError('Failed to scan for printers. Please check connections.');
+      setError('Failed to scan for printers.');
       console.error('Printer scan error:', err);
     } finally {
       setIsScanning(false);
@@ -99,11 +183,50 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
 
     setIsPrinting(true);
     try {
-      // Simulate test print
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      // In real app, would send test page to printer
+      // Create a simple test page
+      const testContent = `
+        <html>
+          <head>
+            <title>Printer Test</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 40px;
+              }
+              .test-box {
+                border: 2px solid black;
+                padding: 20px;
+                margin: 20px auto;
+                max-width: 300px;
+              }
+              h1 { margin-bottom: 10px; }
+              p { color: #666; }
+            </style>
+          </head>
+          <body>
+            <div class="test-box">
+              <h1>Printer Test Page</h1>
+              <p>Photobooth App</p>
+              <p>${new Date().toLocaleString()}</p>
+              <p>If you can read this, your printer is working correctly.</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Open print dialog
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(testContent);
+        printWindow.document.close();
+        printWindow.focus();
+        printWindow.print();
+        printWindow.close();
+      }
     } catch (err) {
-      setError('Test print failed. Please check printer.');
+      setError('Test print failed.');
+      console.error('Print error:', err);
     } finally {
       setIsPrinting(false);
     }
@@ -118,8 +241,32 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
     });
   };
 
+  // Initial scan
   useEffect(() => {
     scanForPrinters();
+  }, []);
+
+  // Listen for USB device changes
+  useEffect(() => {
+    if (!('usb' in navigator)) return;
+
+    const usbNavigator = navigator as Navigator & {
+      usb: {
+        addEventListener(type: string, listener: () => void): void;
+        removeEventListener(type: string, listener: () => void): void;
+      };
+    };
+
+    const handleConnect = () => scanForPrinters();
+    const handleDisconnect = () => scanForPrinters();
+
+    usbNavigator.usb.addEventListener('connect', handleConnect);
+    usbNavigator.usb.addEventListener('disconnect', handleDisconnect);
+
+    return () => {
+      usbNavigator.usb.removeEventListener('connect', handleConnect);
+      usbNavigator.usb.removeEventListener('disconnect', handleDisconnect);
+    };
   }, []);
 
   const selectedPrinter = printers.find((p) => p.id === config.selectedPrinterId);
@@ -182,15 +329,27 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
               <CardTitle className="text-base">Available Printers</CardTitle>
               <CardDescription>Select a printer to connect</CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={scanForPrinters}
-              disabled={isScanning}
-            >
-              <RefreshCw className={cn('h-4 w-4 mr-2', isScanning && 'animate-spin')} />
-              {isScanning ? 'Scanning...' : 'Scan'}
-            </Button>
+            <div className="flex gap-2">
+              {webUsbSupported && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={requestUsbPrinter}
+                >
+                  <Usb className="h-4 w-4 mr-2" />
+                  Add USB
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={scanForPrinters}
+                disabled={isScanning}
+              >
+                <RefreshCw className={cn('h-4 w-4 mr-2', isScanning && 'animate-spin')} />
+                {isScanning ? 'Scanning...' : 'Refresh'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -206,9 +365,6 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
               <Printer className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
                 {isScanning ? 'Scanning for printers...' : 'No printers found'}
-              </p>
-              <p className="text-xs mt-1">
-                Make sure your printer is connected and powered on.
               </p>
             </div>
           ) : (
@@ -234,30 +390,25 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
                     <div
                       className={cn(
                         'p-2 rounded-lg',
-                        printer.type === 'usb' ? 'bg-blue-500/10' : 'bg-purple-500/10'
+                        printer.type === 'usb' ? 'bg-blue-500/10' : 'bg-gray-500/10'
                       )}
                     >
                       {printer.type === 'usb' ? (
-                        <Usb
-                          className={cn(
-                            'h-5 w-5',
-                            printer.type === 'usb' ? 'text-blue-500' : 'text-purple-500'
-                          )}
-                        />
+                        <Usb className="h-5 w-5 text-blue-500" />
                       ) : (
-                        <Wifi className="h-5 w-5 text-purple-500" />
+                        <Printer className="h-5 w-5 text-gray-500" />
                       )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{printer.name}</p>
                       <p className="text-xs text-muted-foreground capitalize">
-                        {printer.type === 'usb' ? 'USB Connection' : 'Network Printer'}
+                        {printer.type === 'usb' ? 'USB Connection' : 'System Printer (Browser Dialog)'}
                       </p>
                     </div>
 
                     <div className={cn('flex items-center gap-2 px-3 py-1 rounded-full', status.bg)}>
-                      <StatusIcon className={cn('h-4 w-4', status.color)} />
+                      <StatusIcon className={cn('h-4 w-4', status.color, printer.status === 'checking' && 'animate-spin')} />
                       <span className={cn('text-xs font-medium', status.color)}>
                         {status.label}
                       </span>
@@ -293,14 +444,28 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
                 </div>
               </div>
 
-              <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
-                <p className="font-medium text-foreground mb-1">Supported Features:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>4x6 and 5x7 paper sizes</li>
-                  <li>High quality photo printing</li>
-                  <li>Borderless printing</li>
-                </ul>
-              </div>
+              {selectedPrinter.type === 'system' && (
+                <div className="p-3 bg-blue-500/10 rounded-lg text-sm flex items-start gap-2">
+                  <Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-medium text-blue-700 dark:text-blue-400">System Printer</p>
+                    <p className="text-blue-600 dark:text-blue-300 mt-1">
+                      Printing will open your system's print dialog where you can select any installed printer.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {selectedPrinter.type === 'usb' && (
+                <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground mb-1">USB Printer Features:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Direct printing without dialogs</li>
+                    <li>Faster print queue</li>
+                    <li>Status monitoring</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -309,25 +474,32 @@ export function PrinterSetup({ config, onUpdate }: PrinterSetupProps) {
       {/* Help Section */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Troubleshooting</CardTitle>
+          <CardTitle className="text-base">Printer Setup Help</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 text-sm text-muted-foreground">
             <div>
-              <p className="font-medium text-foreground">Printer not showing?</p>
+              <p className="font-medium text-foreground">USB Printers (Recommended)</p>
               <ul className="list-disc list-inside mt-1 space-y-1">
-                <li>Make sure the printer is powered on</li>
-                <li>Check USB or network connection</li>
-                <li>Install the latest printer drivers</li>
-                <li>Try clicking "Scan" to refresh</li>
+                <li>Click "Add USB" to pair a USB printer</li>
+                <li>Select your printer from the browser dialog</li>
+                <li>Supported: DNP, HiTi, Canon, Epson, Brother, Kodak</li>
               </ul>
             </div>
             <div>
-              <p className="font-medium text-foreground">Print quality issues?</p>
+              <p className="font-medium text-foreground">System Printer</p>
               <ul className="list-disc list-inside mt-1 space-y-1">
-                <li>Clean the print head</li>
-                <li>Use recommended paper</li>
-                <li>Check ink/ribbon levels</li>
+                <li>Works with any printer installed on your computer</li>
+                <li>Opens system print dialog for each print</li>
+                <li>Good fallback option</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Troubleshooting</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Make sure the printer is powered on</li>
+                <li>Check USB cable connection</li>
+                <li>Use Chrome or Edge for USB printer support</li>
               </ul>
             </div>
           </div>

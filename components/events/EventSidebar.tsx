@@ -12,9 +12,8 @@ import {
   ChevronRight,
   MoreVertical,
   Copy,
-  PartyPopper,
-  Cake,
-  Building2,
+  RectangleVertical,
+  Square,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,13 +35,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { PhotoboothEvent } from '@/lib/events/types';
+import type { PhotoboothEvent, PaperSize } from '@/lib/events/types';
+import { PAPER_SIZE_CONFIG } from '@/lib/events/types';
 
 interface EventSidebarProps {
   events: PhotoboothEvent[];
   activeEventId: string | null;
   onSelectEvent: (eventId: string) => void;
-  onCreateEvent: (template: 'wedding' | 'birthday' | 'corporate', name?: string) => void;
+  onCreateEvent: (paperSize: PaperSize, name?: string) => void;
   onDeleteEvent: (eventId: string) => void;
   onDuplicateEvent: (eventId: string) => void;
   onLaunchEvent: (eventId: string) => void;
@@ -50,18 +50,14 @@ interface EventSidebarProps {
   onToggleCollapse: () => void;
 }
 
-const templateIcons = {
-  wedding: PartyPopper,
-  birthday: Cake,
-  corporate: Building2,
-  custom: Calendar,
+const paperSizeIcons: Record<PaperSize, typeof RectangleVertical> = {
+  strip: RectangleVertical,
+  '4r': Square,
 };
 
-const templateColors = {
-  wedding: 'text-pink-500',
-  birthday: 'text-orange-500',
-  corporate: 'text-blue-500',
-  custom: 'text-gray-500',
+const paperSizeColors: Record<PaperSize, string> = {
+  strip: 'text-blue-500',
+  '4r': 'text-green-500',
 };
 
 export function EventSidebar({
@@ -78,13 +74,13 @@ export function EventSidebar({
   const [showNewEventDialog, setShowNewEventDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
   const [newEventName, setNewEventName] = useState('');
-  const [newEventTemplate, setNewEventTemplate] = useState<'wedding' | 'birthday' | 'corporate'>('wedding');
+  const [newEventPaperSize, setNewEventPaperSize] = useState<PaperSize>('strip');
 
   const handleCreateEvent = () => {
-    onCreateEvent(newEventTemplate, newEventName || undefined);
+    onCreateEvent(newEventPaperSize, newEventName || undefined);
     setShowNewEventDialog(false);
     setNewEventName('');
-    setNewEventTemplate('wedding');
+    setNewEventPaperSize('strip');
   };
 
   const handleDeleteConfirm = () => {
@@ -137,8 +133,8 @@ export function EventSidebar({
           <div className="p-2 space-y-1">
             <AnimatePresence>
               {events.map((event, index) => {
-                const Icon = templateIcons[event.template] || templateIcons.custom;
-                const colorClass = templateColors[event.template] || templateColors.custom;
+                const Icon = paperSizeIcons[event.paperSize] || RectangleVertical;
+                const colorClass = paperSizeColors[event.paperSize] || 'text-gray-500';
 
                 return (
                   <motion.div
@@ -279,7 +275,7 @@ export function EventSidebar({
           <DialogHeader>
             <DialogTitle>Create New Event</DialogTitle>
             <DialogDescription>
-              Choose a template and name for your event.
+              Choose a paper size and name for your event.
             </DialogDescription>
           </DialogHeader>
 
@@ -294,25 +290,27 @@ export function EventSidebar({
             </div>
 
             <div className="space-y-2">
-              <Label>Template</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['wedding', 'birthday', 'corporate'] as const).map((template) => {
-                  const Icon = templateIcons[template];
+              <Label>Paper Size</Label>
+              <div className="grid grid-cols-2 gap-3">
+                {(['strip', '4r'] as const).map((size) => {
+                  const Icon = paperSizeIcons[size];
+                  const config = PAPER_SIZE_CONFIG[size];
                   return (
                     <motion.button
-                      key={template}
+                      key={size}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setNewEventTemplate(template)}
+                      onClick={() => setNewEventPaperSize(size)}
                       className={cn(
                         'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors',
-                        newEventTemplate === template
+                        newEventPaperSize === size
                           ? 'border-primary bg-primary/10'
                           : 'border-border hover:border-primary/50'
                       )}
                     >
-                      <Icon className={cn('h-6 w-6', templateColors[template])} />
-                      <span className="text-sm capitalize">{template}</span>
+                      <Icon className={cn('h-8 w-8', paperSizeColors[size])} />
+                      <span className="font-medium">{config.label}</span>
+                      <span className="text-xs text-muted-foreground text-center">{config.description}</span>
                     </motion.button>
                   );
                 })}

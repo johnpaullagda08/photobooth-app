@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { PhotoboothEvent } from './types';
+import type { PhotoboothEvent, PaperSize } from './types';
 import { createDefaultEvent } from './types';
 
 const STORAGE_KEY = 'photobooth_events';
@@ -71,8 +71,8 @@ export function useEvents() {
 
   // Create new event
   const createEvent = useCallback(
-    (template: 'wedding' | 'birthday' | 'corporate' = 'wedding', name?: string) => {
-      const newEvent = createDefaultEvent(template);
+    (paperSize: PaperSize = 'strip', name?: string) => {
+      const newEvent = createDefaultEvent(paperSize);
       if (name) {
         newEvent.name = name;
       }

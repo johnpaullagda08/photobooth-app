@@ -1,8 +1,8 @@
 # Photobooth App - OpenSpec Specification
 
-**Version**: 1.0.0
+**Version**: 1.1.0
 **Status**: Active Development
-**Last Updated**: 2026-01-27
+**Last Updated**: 2026-01-28
 **Author**: Development Team
 
 ---
@@ -503,14 +503,80 @@ CAPTURE_TEMP_DIR=/tmp/photobooth-captures
 
 ## 14. Deployment
 
-### 14.1 Production Build
+### 14.1 Deployment Options
+
+| Platform | Type | Features | Best For |
+|----------|------|----------|----------|
+| **Cloudflare Pages** | Static | Webcam, HDMI, filters, themes, export | Public hosting |
+| **Local Server** | Full | All features including USB tethering | Event venues |
+| **Docker** | Full | All features | Self-hosted |
+
+### 14.2 Cloudflare Pages (Recommended for Hosting)
+
+**Live URL**: https://photobooth-ru7.pages.dev
+
+#### Setup
 
 ```bash
+# Install Wrangler CLI (already in devDependencies)
+npm install -D wrangler
+
+# Login to Cloudflare
+npx wrangler login
+
+# Create project (first time only)
+npx wrangler pages project create photobooth --production-branch=main
+
+# Deploy
+npm run deploy
+```
+
+#### Deploy Commands
+
+```bash
+npm run deploy           # Deploy to production
+npm run deploy:preview   # Deploy preview branch
+npm run build:static     # Build static export only
+```
+
+#### Feature Availability on Cloudflare
+
+| Feature | Available | Notes |
+|---------|-----------|-------|
+| Landing page | Yes | Full animations |
+| Webcam capture | Yes | Browser MediaDevices API |
+| HDMI capture | Yes | Browser MediaDevices API |
+| Filters & effects | Yes | CSS filters, client-side |
+| Custom themes | Yes | Client-side rendering |
+| Photo strip generation | Yes | Canvas API |
+| QR code sharing | Yes | Client-side generation |
+| Download/export | Yes | Blob download |
+| USB tethering (DSLR) | No | Requires gPhoto2 server |
+| WiFi transfer | No | Requires server polling |
+| Direct thermal printing | Partial | WebUSB works, no server print queue |
+
+#### Configuration Files
+
+- `wrangler.toml` - Cloudflare Pages configuration
+- `next.config.ts` - Static export enabled (`output: "export"`)
+
+### 14.3 Local Development (Full Features)
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server (all features)
+npm run dev
+
+# Build for production
 npm run build
+
+# Start production server
 npm start
 ```
 
-### 14.2 Docker (Optional)
+### 14.4 Docker (Optional)
 
 ```dockerfile
 FROM node:18-alpine
@@ -523,7 +589,7 @@ EXPOSE 3000
 CMD ["npm", "start"]
 ```
 
-### 14.3 PWA Installation
+### 14.5 PWA Installation
 
 The app includes a web manifest (`app/manifest.json`) for PWA installation:
 
@@ -541,6 +607,21 @@ The app includes a web manifest (`app/manifest.json`) for PWA installation:
 ---
 
 ## 15. Changelog
+
+### Version 1.1.0 (2026-01-28)
+
+- **New**: Cloudflare Pages deployment support
+- **New**: Static export build configuration
+- **New**: Redesigned landing page with Fraxbit-inspired animations
+  - Character-by-character text reveal with elastic easing
+  - Magnetic button hover effects
+  - Floating gradient orbs animation
+  - Scroll-triggered parallax effects
+  - New color scheme (rose/coral gradient)
+- **Updated**: Camera source selector shows disabled state for server-only features
+- **Updated**: CameraSetup tab indicates server-required features
+- **Added**: `npm run deploy` command for Cloudflare Pages
+- **Added**: `wrangler.toml` configuration file
 
 ### Version 1.0.0 (2026-01-27)
 

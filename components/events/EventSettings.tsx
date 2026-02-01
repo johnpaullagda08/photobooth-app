@@ -160,6 +160,7 @@ export function EventSettings({ event, onUpdate }: EventSettingsProps) {
               <PrintLayoutSettings
                 config={event.printLayout}
                 onUpdate={(printLayout) => onUpdate({ printLayout })}
+                paperSize={event.paperSize}
               />
             </motion.div>
           </TabsContent>
