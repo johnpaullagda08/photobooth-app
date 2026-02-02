@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-motion';
 import Link from 'next/link';
-import { Camera, Sparkles, Printer, Download, Palette, Smartphone, ArrowRight, Play } from 'lucide-react';
+import { Camera, Sparkles, Printer, Download, Layout, Smartphone, ArrowRight, Play, Mail, Facebook, User, Settings, Image, Monitor } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Animated text that reveals character by character
@@ -123,34 +123,34 @@ function FeatureCard({ icon, title, description, index }: {
 
 const features = [
   {
+    icon: <Settings className="w-6 h-6" />,
+    title: 'Event Management',
+    description: 'Create and manage multiple events with unique settings, layouts, and configurations for each occasion.',
+  },
+  {
     icon: <Camera className="w-6 h-6" />,
-    title: 'Multiple Camera Sources',
-    description: 'Webcam, HDMI capture, USB tethering, or WiFi transfer for maximum flexibility.',
+    title: 'Multi-Camera Support',
+    description: 'Connect webcams, DSLR/mirrorless cameras via HDMI capture, USB tethering, or WiFi transfer.',
   },
   {
-    icon: <Sparkles className="w-6 h-6" />,
-    title: 'Filters & Effects',
-    description: 'Apply stunning B&W, vintage, high contrast filters and more to your photos.',
+    icon: <Layout className="w-6 h-6" />,
+    title: 'Print Layout Editor',
+    description: 'Design custom layouts with drag-and-drop positioning. Choose 2x6 strips or 4x6 (4R) paper sizes.',
   },
   {
-    icon: <Palette className="w-6 h-6" />,
-    title: 'Custom Themes',
-    description: 'Wedding, party, corporate presets or design your own unique theme.',
-  },
-  {
-    icon: <Download className="w-6 h-6" />,
-    title: 'Easy Export',
-    description: 'Download as PNG/JPEG or share instantly via QR code with guests.',
+    icon: <Image className="w-6 h-6" />,
+    title: 'Template Backgrounds',
+    description: 'Upload custom backgrounds and frame overlays. Save templates for quick reuse across events.',
   },
   {
     icon: <Printer className="w-6 h-6" />,
-    title: 'Print Support',
-    description: 'Direct thermal printer support with professional 2x6 and 4x6 sizes.',
+    title: 'Instant Printing',
+    description: 'Print directly to thermal printers with professional quality. Download photos as high-res images.',
   },
   {
     icon: <Smartphone className="w-6 h-6" />,
-    title: 'Fully Responsive',
-    description: 'Seamless experience on mobile, tablet, and desktop devices.',
+    title: 'Mobile Friendly',
+    description: 'Fully responsive design works on tablets, iPads, and phones. Perfect for on-the-go events.',
   },
 ];
 
@@ -195,34 +195,33 @@ export default function HomePage() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              <span className="text-sm text-neutral-300">No signup required</span>
+              <span className="text-sm text-neutral-300">Free to use, no signup required</span>
             </motion.div>
 
             {/* Main headline with character animation */}
             <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight mb-8">
-              <AnimatedText text="Capture" className="block" delay={0.2} />
+              <AnimatedText text="Log the" className="block" delay={0.2} />
               <span className="block mt-2">
-                <AnimatedText text="Moments " className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-orange-400 to-rose-400" delay={0.5} />
-                <AnimatedText text="That" delay={0.9} />
+                <AnimatedText text="Photo" className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-orange-400 to-rose-400" delay={0.5} />
+                <AnimatedText text="booth" className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-400" delay={0.75} />
               </span>
-              <AnimatedText text="Matter" className="block mt-2" delay={1.1} />
             </h1>
 
             <motion.p
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.4 }}
+              transition={{ duration: 0.8, delay: 1.2 }}
               className="text-xl sm:text-2xl text-neutral-400 max-w-2xl mx-auto mb-12 leading-relaxed"
             >
-              Create stunning photo strips with professional filters,
-              custom themes, and instant sharing.
+              Create professional photo strips for weddings, parties, and events.
+              Easy event setup, live camera preview, and instant printing.
             </motion.p>
 
             {/* CTA Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.6 }}
+              transition={{ duration: 0.8, delay: 1.4 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
               <MagneticButton
@@ -242,7 +241,7 @@ export default function HomePage() {
                 href="#features"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-semibold text-lg border border-white/20 hover:bg-white/5 transition-colors"
               >
-                Learn More
+                Explore Features
               </Link>
             </motion.div>
           </div>
@@ -292,7 +291,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Preview Section */}
+      {/* How It Works Section */}
       <section className="py-32 relative">
         <FloatingOrb className="w-[500px] h-[500px] bg-rose-500/10 -right-60 top-0" delay={1} />
 
@@ -306,21 +305,21 @@ export default function HomePage() {
             >
               <span className="text-rose-400 text-sm font-semibold tracking-wider uppercase mb-4 block">How It Works</span>
               <h2 className="text-4xl sm:text-5xl font-bold mb-8 leading-tight">
-                Create Memorable
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400"> Photo Strips</span>
+                Simple Workflow,
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400"> Professional Results</span>
               </h2>
               <p className="text-xl text-neutral-400 mb-10 leading-relaxed">
-                Take 3 or 4 photos with customizable countdown, apply beautiful
-                filters, and export high-quality images ready for printing or sharing.
+                Set up your event in minutes, capture photos with live preview,
+                and print or download instantly. Perfect for any occasion.
               </p>
 
               <ul className="space-y-4">
                 {[
-                  'User-selectable 3 or 4 photos per strip',
-                  'Countdown timer: 3, 5, 8, or 10 seconds',
-                  'Wedding, Party, Corporate themes',
-                  'Custom theme builder with colors and fonts',
-                  'Print sizes: 2x6 strip or 4x6 photo',
+                  'Create events with custom settings and layouts',
+                  'Choose paper size: 2x6 strips or 4x6 (4R) photos',
+                  'Connect any camera: webcam, DSLR, or mirrorless',
+                  'Capture with countdown timer (3, 5, 8, or 10 seconds)',
+                  'Preview photos and print or download instantly',
                 ].map((item, index) => (
                   <motion.li
                     key={index}
@@ -367,7 +366,7 @@ export default function HomePage() {
                   </div>
                   <div className="mt-4 pt-4 border-t border-neutral-700">
                     <p className="text-center text-sm text-neutral-400">Your Event Name</p>
-                    <p className="text-center text-xs text-neutral-500 mt-1">January 2026</p>
+                    <p className="text-center text-xs text-neutral-500 mt-1">Log the Photobooth</p>
                   </div>
                 </motion.div>
 
@@ -376,6 +375,54 @@ export default function HomePage() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="py-32 relative">
+        <div className="max-w-4xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <span className="text-rose-400 text-sm font-semibold tracking-wider uppercase mb-4 block">About</span>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-8">
+              What is Log the Photobooth?
+            </h2>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="prose prose-lg prose-invert mx-auto"
+          >
+            <div className="bg-gradient-to-b from-white/[0.05] to-transparent border border-white/[0.08] rounded-2xl p-8 sm:p-12">
+              <p className="text-neutral-300 text-lg leading-relaxed mb-6">
+                <strong className="text-white">Log the Photobooth</strong> is a modern, browser-based photobooth application
+                designed for events of all sizes. Whether you're hosting a wedding, birthday party, corporate event,
+                or any special occasion, our platform makes it easy to capture and print memorable photos.
+              </p>
+              <p className="text-neutral-300 text-lg leading-relaxed mb-6">
+                The application features a powerful event management system where you can create multiple events,
+                each with its own unique settings. Configure your preferred paper size (2x6 photo strips or 4x6 4R photos),
+                connect any camera source, and customize your print layouts with backgrounds and frame overlays.
+              </p>
+              <p className="text-neutral-300 text-lg leading-relaxed mb-6">
+                With support for webcams, DSLR cameras via HDMI capture cards, mirrorless cameras via USB,
+                and WiFi camera transfer, you have the flexibility to use professional equipment or simple
+                built-in cameras. The live preview ensures every shot is perfect before printing.
+              </p>
+              <p className="text-neutral-400 text-base">
+                Built with modern web technologies and designed to be responsive on all devices including
+                tablets and mobile phones. No installation required - just open your browser and start capturing memories.
+              </p>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -395,8 +442,8 @@ export default function HomePage() {
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 to-orange-400"> Get Started?</span>
           </h2>
           <p className="text-xl text-neutral-400 mb-12 max-w-2xl mx-auto">
-            Launch the photobooth now and create your first photo strip in seconds.
-            No downloads, no signup, just pure fun.
+            Launch Log the Photobooth now and create your first event in seconds.
+            No downloads, no signup - just open and start capturing memories.
           </p>
 
           <MagneticButton
@@ -414,20 +461,99 @@ export default function HomePage() {
         </motion.div>
       </section>
 
+      {/* Contact Section */}
+      <section id="contact" className="py-32 relative">
+        <div className="max-w-4xl mx-auto px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <span className="text-rose-400 text-sm font-semibold tracking-wider uppercase mb-4 block">Contact</span>
+            <h2 className="text-4xl sm:text-5xl font-bold mb-6">
+              Get in Touch
+            </h2>
+            <p className="text-xl text-neutral-400 max-w-2xl mx-auto">
+              Have questions, feedback, or need support? Feel free to reach out.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-6"
+          >
+            <a
+              href="mailto:johnpaullagda08@gmail.com"
+              className="group flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-b from-white/[0.08] to-transparent border border-white/[0.08] hover:border-rose-500/30 transition-all duration-300"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Mail className="w-5 h-5 text-rose-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm text-neutral-400">Email</p>
+                <p className="text-white font-medium">johnpaullagda08@gmail.com</p>
+              </div>
+            </a>
+
+            <a
+              href="https://www.facebook.com/johnpaullagda08/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center gap-4 px-8 py-5 rounded-2xl bg-gradient-to-b from-white/[0.08] to-transparent border border-white/[0.08] hover:border-rose-500/30 transition-all duration-300"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500/20 to-orange-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Facebook className="w-5 h-5 text-rose-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-sm text-neutral-400">Facebook</p>
+                <p className="text-white font-medium">John Paul Lagda</p>
+              </div>
+            </a>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="py-12 border-t border-white/[0.05]">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col items-center gap-8">
+            {/* Logo and name */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center">
-                <Camera className="w-5 h-5 text-white" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-orange-500 flex items-center justify-center">
+                <Camera className="w-6 h-6 text-white" />
               </div>
-              <span className="font-semibold text-lg">Photobooth</span>
+              <div>
+                <span className="font-bold text-xl block">Log the Photobooth</span>
+                <span className="text-neutral-500 text-sm">Event Photo Strip Creator</span>
+              </div>
             </div>
 
-            <p className="text-neutral-500 text-sm">
-              Built with Next.js, TypeScript, and Tailwind CSS
-            </p>
+            {/* Links */}
+            <div className="flex items-center gap-8 text-sm">
+              <Link href="#features" className="text-neutral-400 hover:text-white transition-colors">Features</Link>
+              <Link href="#about" className="text-neutral-400 hover:text-white transition-colors">About</Link>
+              <Link href="#contact" className="text-neutral-400 hover:text-white transition-colors">Contact</Link>
+              <Link href="/booth" className="text-neutral-400 hover:text-white transition-colors">Launch App</Link>
+            </div>
+
+            {/* Developer info */}
+            <div className="flex flex-col items-center gap-2 pt-4 border-t border-white/[0.05] w-full">
+              <div className="flex items-center gap-2 text-neutral-400">
+                <User className="w-4 h-4" />
+                <span className="text-sm">Developed by <span className="text-white">John Paul Lagda</span></span>
+              </div>
+              <p className="text-neutral-500 text-sm">
+                Built with Next.js, TypeScript, and Tailwind CSS
+              </p>
+              <p className="text-neutral-600 text-xs mt-2">
+                &copy; {new Date().getFullYear()} Log the Photobooth. All rights reserved.
+              </p>
+            </div>
           </div>
         </div>
       </footer>

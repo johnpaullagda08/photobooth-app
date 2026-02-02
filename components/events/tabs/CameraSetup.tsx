@@ -32,6 +32,12 @@ import {
   type DetectedCameraDevice,
   type CameraDeviceType,
 } from '@/lib/camera/device-detection';
+import {
+  checkCameraAccessAvailability,
+  isSecureContext,
+  getNetworkAccessHelp,
+  type CameraAccessStatus,
+} from '@/lib/camera/errors';
 
 // Check if running in static/hosted mode (no server)
 const isStaticMode = typeof window !== 'undefined' && !window.location.hostname.includes('localhost');
@@ -73,6 +79,8 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+  const [cameraAccessStatus, setCameraAccessStatus] = useState<CameraAccessStatus | null>(null);
+  const [showNetworkHelp, setShowNetworkHelp] = useState(false);
 
   // Check camera permission status
   const checkPermission = useCallback(async () => {
@@ -97,6 +105,12 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
 
   // Test if a camera is actually usable
   const testCameraAvailability = useCallback(async (deviceId: string): Promise<boolean> => {
+    // Check if camera access is available first
+    const accessStatus = checkCameraAccessAvailability();
+    if (!accessStatus.available) {
+      return false;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { deviceId: { exact: deviceId } },
@@ -110,9 +124,12 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
   }, []);
 
   const fetchDevices = useCallback(async () => {
-    // Check if mediaDevices API is available
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
-      setError('Camera API not available in this browser.');
+    // Check camera access availability first
+    const accessStatus = checkCameraAccessAvailability();
+    setCameraAccessStatus(accessStatus);
+
+    if (!accessStatus.available) {
+      setError(accessStatus.message);
       setIsLoading(false);
       return;
     }
@@ -208,8 +225,9 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
       previewStream.getTracks().forEach((track) => track.stop());
     }
 
-    // Check if mediaDevices API is available
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+    // Check camera access availability first
+    const accessStatus = checkCameraAccessAvailability();
+    if (!accessStatus.available) {
       setPreviewStream(null);
       return;
     }
@@ -265,10 +283,16 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
     };
   }, [fetchDevices]);
 
-  // Initial setup
+  // Initial setup - check camera access availability first
   useEffect(() => {
-    checkPermission();
-    fetchDevices();
+    // Check if camera access is possible in this environment
+    const accessStatus = checkCameraAccessAvailability();
+    setCameraAccessStatus(accessStatus);
+
+    if (accessStatus.available) {
+      checkPermission();
+      fetchDevices();
+    }
 
     return () => {
       // Stop all tracks when component unmounts
@@ -313,6 +337,43 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
 
   return (
     <div className="space-y-6 max-w-2xl">
+      {/* Network/Secure Context Warning */}
+      {cameraAccessStatus && !cameraAccessStatus.available && (
+        <Card className="border-amber-500/50 bg-amber-500/10">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <CardTitle className="text-base text-amber-500">Camera Access Unavailable</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-amber-200">{cameraAccessStatus.message}</p>
+            {cameraAccessStatus.suggestion && (
+              <div className="text-sm text-muted-foreground whitespace-pre-line">
+                {cameraAccessStatus.suggestion}
+              </div>
+            )}
+            {cameraAccessStatus.reason === 'insecure_context' && (
+              <div className="pt-2 border-t border-amber-500/20">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowNetworkHelp(!showNetworkHelp)}
+                  className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                >
+                  {showNetworkHelp ? 'Hide' : 'Show'} Network Access Help
+                </Button>
+                {showNetworkHelp && (
+                  <div className="mt-4 p-4 bg-background/50 rounded-lg text-sm font-mono whitespace-pre-wrap text-muted-foreground">
+                    {getNetworkAccessHelp()}
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Camera Source */}
       <Card>
         <CardHeader>
@@ -654,6 +715,19 @@ export function CameraSetup({ config, onUpdate }: CameraSetupProps) {
                 <li>Supports Canon, Nikon, and many other DSLRs</li>
                 <li>Triggers the camera shutter directly via USB</li>
                 <li>Only available when running locally (npm run dev)</li>
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-foreground flex items-center gap-2">
+                <Wifi className="h-4 w-4 text-cyan-500" />
+                Accessing from iPad/Tablet/Other Devices
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 ml-6">
+                <li>Camera access requires HTTPS (secure connection)</li>
+                <li>localhost works without HTTPS on the server machine</li>
+                <li>For network access (e.g., http://192.168.x.x), enable HTTPS</li>
+                <li>Use a tunneling service like ngrok for quick HTTPS setup</li>
+                <li>The camera connected to the server can be used, or use device cameras</li>
               </ul>
             </div>
           </div>

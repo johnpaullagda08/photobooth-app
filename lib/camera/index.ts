@@ -27,6 +27,12 @@ export {
   isDisconnectionError,
   checkCameraPermission,
   requestCameraPermission,
+  requestCameraPermissionSimple,
+  isSecureContext,
+  isMediaDevicesAvailable,
+  checkCameraAccessAvailability,
+  getNetworkAccessHelp,
   type CameraErrorType,
   type CameraError,
+  type CameraAccessStatus,
 } from './errors';

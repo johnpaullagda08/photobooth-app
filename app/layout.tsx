@@ -14,13 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Photobooth',
-  description: 'Create stunning photo strips with filters, themes, and effects. Perfect for weddings, parties, and events.',
+  title: 'Log the Photobooth | Event Photo Strip Creator',
+  description: 'Create professional photo strips for weddings, parties, and events. Features event management, multiple camera sources, customizable layouts, and instant printing. Free, no signup required.',
   manifest: '/manifest.json',
+  keywords: ['photobooth', 'photo strip', 'event photography', 'wedding photobooth', 'party photos', 'print photos'],
+  authors: [{ name: 'John Paul Lagda', url: 'https://www.facebook.com/johnpaullagda08/' }],
+  creator: 'John Paul Lagda',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Photobooth',
+    title: 'Log the Photobooth',
   },
   icons: {
     icon: [

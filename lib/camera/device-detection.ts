@@ -217,8 +217,14 @@ export function detectCameraDevice(device: MediaDeviceInfo): DetectedCameraDevic
 
 /**
  * Get all camera devices with type detection
+ * Returns empty array if camera access is not available (insecure context, etc.)
  */
 export async function getDetectedCameraDevices(): Promise<DetectedCameraDevice[]> {
+  // Check if mediaDevices API is available
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
+    return [];
+  }
+
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter((d) => d.kind === 'videoinput');

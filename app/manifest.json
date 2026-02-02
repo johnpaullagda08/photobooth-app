@@ -1,7 +1,7 @@
 {
-  "name": "Photobooth",
-  "short_name": "Photobooth",
-  "description": "Create stunning photo strips with filters, themes, and effects",
+  "name": "Log the Photobooth",
+  "short_name": "Log Photobooth",
+  "description": "Create professional photo strips for weddings, parties, and events. Features event management, camera capture, customizable layouts, and instant printing.",
   "start_url": "/booth",
   "display": "standalone",
   "background_color": "#09090b",
@@ -21,7 +21,7 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["photo", "entertainment"],
+  "categories": ["photo", "entertainment", "events"],
   "screenshots": [],
   "prefer_related_applications": false
 }

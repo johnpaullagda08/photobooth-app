@@ -91,7 +91,7 @@ export default function BoothPage() {
         <header className="h-14 border-b border-border flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <Camera className="h-5 w-5 text-primary" />
-            <h1 className="font-semibold">Photobooth Manager</h1>
+            <h1 className="font-semibold">Log the Photobooth</h1>
           </div>
           <ThemeToggle />
         </header>
