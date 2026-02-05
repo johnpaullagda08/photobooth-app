@@ -36,23 +36,41 @@ export const COUNTDOWN_OPTIONS: CountdownDuration[] = [3, 5, 8, 10];
 // Photo count options
 export const PHOTO_COUNT_OPTIONS: PhotoCount[] = [3, 4];
 
-// Print formats
+// Print formats - ALL output uses 4R (4x6) canvas
+// Strip mode: 2 strips side-by-side on 4R
+// 4R mode: Single layout on 4R
 export const PRINT_FORMATS: Record<string, PrintFormat> = {
   '2x6': {
     size: '2x6',
-    width: 600,
-    height: 1800,
+    width: 1200,    // Always 4R canvas width
+    height: 1800,   // Always 4R canvas height
     dpi: 300,
-    label: '2x6 Strip',
+    label: '2×6 Strip (2-up on 4R)',
   },
   '4x6': {
     size: '4x6',
     width: 1200,
     height: 1800,
     dpi: 300,
-    label: '4x6 Photo',
+    label: '4×6 (4R) Photo',
   },
 };
+
+// 4R Canvas specifications (300 DPI)
+export const PRINT_CANVAS = {
+  WIDTH: 1200,      // 4 inches at 300 DPI
+  HEIGHT: 1800,     // 6 inches at 300 DPI
+  DPI: 300,
+  SAFE_MARGIN: 20,  // 20px safe area on each side
+} as const;
+
+// Strip dimensions when printed 2-up on 4R
+export const STRIP_2UP = {
+  GAP: 20,          // Gap between strips
+  // Each strip: (1200 - 20*2 - 20) / 2 = 570px wide
+  WIDTH: Math.floor((PRINT_CANVAS.WIDTH - PRINT_CANVAS.SAFE_MARGIN * 2 - 20) / 2),
+  HEIGHT: PRINT_CANVAS.HEIGHT - PRINT_CANVAS.SAFE_MARGIN * 2,  // 1760px tall
+} as const;
 
 // CSS Filters for real-time preview
 export const CSS_FILTERS: Record<string, string> = {

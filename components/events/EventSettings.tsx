@@ -161,6 +161,9 @@ export function EventSettings({ event, onUpdate }: EventSettingsProps) {
                 config={event.printLayout}
                 onUpdate={(printLayout) => onUpdate({ printLayout })}
                 paperSize={event.paperSize}
+                showCutMarks={event.printing.showCutMarks}
+                orientation={event.orientation}
+                onOrientationChange={(orientation) => onUpdate({ orientation })}
               />
             </motion.div>
           </TabsContent>

@@ -7,6 +7,41 @@ import { createDefaultEvent } from './types';
 const STORAGE_KEY = 'photobooth_events';
 const ACTIVE_EVENT_KEY = 'photobooth_active_event';
 
+// Migrate legacy events to add missing fields
+function migrateEvent(event: Partial<PhotoboothEvent>): PhotoboothEvent {
+  // Add default paperSize if missing (legacy events)
+  if (!event.paperSize) {
+    event.paperSize = 'strip';
+  }
+  // Add default orientation if missing (legacy events)
+  // Strip is always portrait, 4R defaults to portrait
+  if (!event.orientation) {
+    event.orientation = 'portrait';
+  }
+  // Ensure printing config exists and has showCutMarks
+  if (!event.printing) {
+    event.printing = {
+      paperSize: '4x6',
+      printOutput: 'double-strip',
+      copies: 1,
+      autoPrint: false,
+      quality: 'high',
+      showCutMarks: true,
+      colorCorrection: {
+        enabled: false,
+        brightness: 0,
+        contrast: 0,
+        saturation: 0,
+      },
+      printerProfile: null,
+    };
+  } else if (event.printing.showCutMarks === undefined) {
+    // Add showCutMarks if missing from existing printing config
+    event.printing.showCutMarks = true;
+  }
+  return event as PhotoboothEvent;
+}
+
 // Get events from localStorage
 export function getEventsFromStorage(): PhotoboothEvent[] {
   if (typeof window === 'undefined') return [];
@@ -14,8 +49,9 @@ export function getEventsFromStorage(): PhotoboothEvent[] {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return [];
-    const events = JSON.parse(data) as PhotoboothEvent[];
-    // Sort by date descending
+    const rawEvents = JSON.parse(data) as Partial<PhotoboothEvent>[];
+    // Migrate and sort by date descending
+    const events = rawEvents.map(migrateEvent);
     return events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   } catch (error) {
     console.error('Failed to load events:', error);

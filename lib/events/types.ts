@@ -113,7 +113,10 @@ export interface PrintLayoutConfig {
 
 export interface PrintingConfig {
   paperSize: '4x6' | '5x7' | '6x8';
-  printOutput: 'single' | 'double-strip'; // single = 1 strip per page, double-strip = 2 strips side by side
+  // Print output is always 4R (4x6) canvas
+  // For strip mode: always 2 strips side-by-side (no single strip option)
+  // For 4R mode: single photo/layout fills the page
+  printOutput: 'double-strip'; // Always 2 strips side-by-side for strip mode
   copies: number;
   autoPrint: boolean;
   quality: 'draft' | 'normal' | 'high';
@@ -128,13 +131,20 @@ export interface PrintingConfig {
   printerProfile: string | null; // ICC profile name
 }
 
+export type PrinterConnectionType = 'usb' | 'network' | 'airprint' | 'system' | 'bluetooth';
+export type PrinterStatus = 'online' | 'offline' | 'busy' | 'error' | 'unknown';
+
 export interface PrinterConfig {
   selectedPrinterId: string | null;
   printerName: string | null;
   isConnected: boolean;
+  connectionType?: PrinterConnectionType;
+  printerModel?: string;
+  ipAddress?: string;
 }
 
 export type PaperSize = 'strip' | '4r';
+export type Orientation = 'portrait' | 'landscape';
 
 export interface PhotoboothEvent {
   id: string;
@@ -143,6 +153,7 @@ export interface PhotoboothEvent {
   createdAt: number;
   updatedAt: number;
   paperSize: PaperSize; // Primary paper size selection
+  orientation: Orientation; // Portrait or Landscape (only for 4R mode, strip is always portrait)
 
   launchPage: LaunchPageConfig;
   camera: CameraConfig;
@@ -358,12 +369,15 @@ export const PAPER_SIZE_CONFIG: Record<PaperSize, { label: string; description: 
   '4r': { label: '4R', description: '4x6 inch photo (landscape)' },
 };
 
-export function createDefaultEvent(paperSize: PaperSize = 'strip'): PhotoboothEvent {
+export function createDefaultEvent(paperSize: PaperSize = 'strip', orientation: Orientation = 'portrait'): PhotoboothEvent {
   const now = Date.now();
   const paperSizeLabel = PAPER_SIZE_CONFIG[paperSize].label;
 
   // Select appropriate print layout based on paper size
   const printLayout = paperSize === '4r' ? DEFAULT_4R_PRINT_LAYOUT : DEFAULT_PRINT_LAYOUT;
+
+  // Strip mode is always portrait
+  const finalOrientation = paperSize === 'strip' ? 'portrait' : orientation;
 
   return {
     id: crypto.randomUUID ? crypto.randomUUID() : `event-${now}`,
@@ -372,6 +386,7 @@ export function createDefaultEvent(paperSize: PaperSize = 'strip'): PhotoboothEv
     createdAt: now,
     updatedAt: now,
     paperSize,
+    orientation: finalOrientation,
     launchPage: DEFAULT_LAUNCH_PAGE,
     camera: DEFAULT_CAMERA,
     countdown: DEFAULT_COUNTDOWN,

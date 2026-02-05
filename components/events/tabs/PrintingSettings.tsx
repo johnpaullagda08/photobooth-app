@@ -45,9 +45,10 @@ const paperSizeOptions = [
   { value: '6x8', label: '6x8 inch', description: 'Large format' },
 ] as const;
 
+// Print output is always 2 strips side-by-side on 4R paper for strip mode
+// Single strip option removed per layout rules
 const printOutputOptions = [
-  { value: 'single', label: 'Single Strip', description: '1 strip per page', icon: LayoutGrid },
-  { value: 'double-strip', label: '2x Strip', description: '2 strips side-by-side on 4x6', icon: Columns },
+  { value: 'double-strip', label: '2× Strip', description: '2 strips side-by-side on 4×6 paper', icon: Columns },
 ] as const;
 
 const qualityOptions = [
@@ -91,37 +92,33 @@ export function PrintingSettings({ config, onUpdate }: PrintingSettingsProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Print Output</CardTitle>
-          <CardDescription>How to print the 2x6 photo strip</CardDescription>
+          <CardDescription>How your photos will be printed</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-3">
-            {printOutputOptions.map((option) => {
-              const Icon = option.icon;
-              return (
-                <motion.button
-                  key={option.value}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onUpdate({ ...config, printOutput: option.value })}
-                  className={cn(
-                    'flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-colors text-center',
-                    printOutput === option.value
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border hover:border-primary/50'
-                  )}
-                >
-                  <Icon className="h-6 w-6" />
-                  <span className="font-medium">{option.label}</span>
-                  <span className="text-xs text-muted-foreground">{option.description}</span>
-                </motion.button>
-              );
-            })}
+          <div className="flex items-center gap-4 p-4 rounded-lg border-2 border-primary bg-primary/10">
+            <Columns className="h-8 w-8 text-primary flex-shrink-0" />
+            <div>
+              <p className="font-medium">2× Strip on 4×6 Paper</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Two identical 2×6 strips printed side-by-side on 4×6 (4R) paper.
+                Guests get 2 copies to keep or share!
+              </p>
+            </div>
           </div>
-          {printOutput === 'double-strip' && (
-            <p className="text-sm text-muted-foreground mt-3 p-3 bg-muted rounded-lg">
-              Two 2x6 strips will be printed side-by-side on 4x6 paper, giving guests 2 copies to keep or share.
+          <div className="mt-3 p-3 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground flex items-start gap-2">
+              <span className="text-primary font-bold">•</span>
+              <span>
+                <strong>Output:</strong> 1200 × 1800 px at 300 DPI (4×6 inches)
+              </span>
             </p>
-          )}
+            <p className="text-sm text-muted-foreground flex items-start gap-2 mt-1">
+              <span className="text-primary font-bold">•</span>
+              <span>
+                <strong>Each strip:</strong> ~570 × 1760 px with 20px safe margins
+              </span>
+            </p>
+          </div>
         </CardContent>
       </Card>
 

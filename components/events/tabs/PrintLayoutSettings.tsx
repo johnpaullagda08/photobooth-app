@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Layout, Trash2, Info, Pencil } from 'lucide-react';
+import { Layout, Trash2, Info, Pencil, RectangleVertical, RectangleHorizontal } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { LayoutCanvas, TemplatePanel, BoxPropertiesPanel, type LayoutTemplate } from '@/components/layout-editor';
-import type { PrintLayoutConfig, BoxConfig, PaperSize } from '@/lib/events/types';
+import type { PrintLayoutConfig, BoxConfig, PaperSize, Orientation } from '@/lib/events/types';
 
 // Storage key for user templates (must match TemplatePanel)
 const TEMPLATE_STORAGE_KEY = 'photobooth_layout_templates';
@@ -20,9 +20,22 @@ interface PrintLayoutSettingsProps {
   config: PrintLayoutConfig;
   onUpdate: (config: PrintLayoutConfig) => void;
   paperSize: PaperSize;
+  /** Show cut marks between strips (strip mode only) */
+  showCutMarks?: boolean;
+  /** Current orientation (only for 4R mode) */
+  orientation?: Orientation;
+  /** Callback when orientation changes */
+  onOrientationChange?: (orientation: Orientation) => void;
 }
 
-export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayoutSettingsProps) {
+export function PrintLayoutSettings({
+  config,
+  onUpdate,
+  paperSize,
+  showCutMarks = false,
+  orientation = 'portrait',
+  onOrientationChange,
+}: PrintLayoutSettingsProps) {
   const [selectedBoxId, setSelectedBoxId] = useState<string | null>(null);
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [activeTemplateName, setActiveTemplateName] = useState<string | null>(null);
@@ -218,18 +231,59 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
                 Drag, resize, and arrange photo boxes on the canvas
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border">
                 <Info className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                 <div className="text-sm">
                   <span className="font-medium">
-                    {paperSize === 'strip' ? 'Strip (Portrait)' : '4R (Landscape)'}
+                    {paperSize === 'strip'
+                      ? 'Strip (Portrait)'
+                      : `4R (${orientation === 'portrait' ? 'Portrait' : 'Landscape'})`}
                   </span>
                   <span className="text-muted-foreground ml-2">
-                    {paperSize === 'strip' ? '2×6 inch photo strip' : '4×6 inch landscape'}
+                    {paperSize === 'strip'
+                      ? '2×6 inch photo strip'
+                      : orientation === 'portrait'
+                      ? '4×6 inch portrait'
+                      : '6×4 inch landscape'}
                   </span>
                 </div>
               </div>
+
+              {/* Orientation Selector - Only for 4R mode */}
+              {paperSize === '4r' && onOrientationChange && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Orientation</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onOrientationChange('portrait')}
+                      className={cn(
+                        'flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all',
+                        orientation === 'portrait'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      )}
+                    >
+                      <RectangleVertical className="w-5 h-5" />
+                      <span className="text-sm font-medium">Portrait</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOrientationChange('landscape')}
+                      className={cn(
+                        'flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all',
+                        orientation === 'landscape'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      )}
+                    >
+                      <RectangleHorizontal className="w-5 h-5" />
+                      <span className="text-sm font-medium">Landscape</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -239,6 +293,7 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
               <LayoutCanvas
                 boxes={config.boxes}
                 paperSize={paperSize}
+                orientation={orientation}
                 selectedBoxId={selectedBoxId}
                 onSelectBox={setSelectedBoxId}
                 onUpdateBox={handleBoxUpdate}
@@ -248,6 +303,8 @@ export function PrintLayoutSettings({ config, onUpdate, paperSize }: PrintLayout
                 frameTemplate={config.frameTemplate}
                 backgroundImage={config.backgroundImage}
                 backgroundColor={config.backgroundColor || '#ffffff'}
+                photoCount={config.photoCount}
+                showCutMarks={showCutMarks}
               />
             </CardContent>
           </Card>

@@ -11,11 +11,13 @@ import { PhotoBox } from './PhotoBox';
 import { SnapGuidelines } from './SnapGuidelines';
 import { PrintRenderer } from './PrintRenderer';
 import { useLayoutValidation, useSnapToGuides, type SnapGuide } from '@/hooks/layout-editor';
-import type { BoxConfig, PaperSize } from '@/lib/events/types';
+import type { BoxConfig, PaperSize, Orientation } from '@/lib/events/types';
 
 interface LayoutCanvasProps {
   boxes: BoxConfig[];
   paperSize: PaperSize;
+  /** Orientation - only affects 4R mode (strip is always portrait) */
+  orientation?: Orientation;
   selectedBoxId: string | null;
   onSelectBox: (id: string | null) => void;
   onUpdateBox: (id: string, updates: Partial<BoxConfig>) => void;
@@ -25,33 +27,58 @@ interface LayoutCanvasProps {
   frameTemplate?: string | null;
   backgroundColor?: string;
   backgroundImage?: string | null;
+  /** Number of photos per strip (strip mode only) */
+  photoCount?: number;
+  /** Show cut marks between strips (strip mode only) */
+  showCutMarks?: boolean;
 }
 
-// Paper size configurations
-const PAPER_CONFIG = {
-  strip: {
-    // 2x6 inches - portrait (tall and narrow)
-    aspectRatio: 2 / 6, // 0.333...
-    cssAspectRatio: '2 / 6',
-    label: '2×6 Strip',
-    description: '2 inch × 6 inch photo strip',
-    // For responsive sizing, strip should be height-constrained
-    sizing: 'height' as const,
-  },
-  '4r': {
+// Paper size configurations - now a function to support orientation
+function getPaperConfig(paperSize: PaperSize, orientation: Orientation = 'portrait') {
+  if (paperSize === 'strip') {
+    return {
+      // 2x6 inches - always portrait (tall and narrow)
+      aspectRatio: 2 / 6, // 0.333...
+      cssAspectRatio: '2 / 6',
+      label: '2×6 Strip',
+      description: '2 inch × 6 inch photo strip',
+      // For responsive sizing, strip should be height-constrained
+      sizing: 'height' as const,
+    };
+  }
+
+  // 4R mode - support both orientations
+  if (orientation === 'portrait') {
+    return {
+      // 4x6 inches - portrait (tall)
+      aspectRatio: 4 / 6, // 0.667
+      cssAspectRatio: '4 / 6',
+      label: '4R Portrait',
+      description: '4 inch × 6 inch (portrait)',
+      sizing: 'height' as const,
+    };
+  }
+
+  return {
     // 4x6 inches - landscape (wide)
     aspectRatio: 6 / 4, // 1.5
     cssAspectRatio: '6 / 4',
     label: '4R Landscape',
-    description: '4 inch × 6 inch (landscape)',
-    // For responsive sizing, 4R should be width-constrained
+    description: '6 inch × 4 inch (landscape)',
     sizing: 'width' as const,
-  },
+  };
+}
+
+// Legacy PAPER_CONFIG for compatibility
+const PAPER_CONFIG = {
+  strip: getPaperConfig('strip'),
+  '4r': getPaperConfig('4r', 'landscape'),
 };
 
 export function LayoutCanvas({
   boxes,
   paperSize,
+  orientation = 'portrait',
   selectedBoxId,
   onSelectBox,
   onUpdateBox,
@@ -61,6 +88,8 @@ export function LayoutCanvas({
   frameTemplate,
   backgroundColor = '#ffffff',
   backgroundImage,
+  photoCount,
+  showCutMarks = false,
 }: LayoutCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const fullscreenCanvasRef = useRef<HTMLDivElement>(null);
@@ -74,7 +103,10 @@ export function LayoutCanvas({
   const [isFullscreenEdit, setIsFullscreenEdit] = useState(false);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  const paperConfig = PAPER_CONFIG[paperSize];
+  // Get paper config based on paper size and orientation
+  const paperConfig = useMemo(() => {
+    return getPaperConfig(paperSize, orientation);
+  }, [paperSize, orientation]);
 
   // Validation hook
   const { overlappingBoxIds } = useLayoutValidation({
@@ -609,14 +641,18 @@ export function LayoutCanvas({
               {/* Modal Content - Responsive Preview */}
               <div className="p-6 flex items-center justify-center bg-zinc-100 dark:bg-zinc-900 min-h-[400px]">
                 <PrintRenderer
+                  key={`preview-${boxes.map(b => `${b.id}:${b.x}:${b.y}:${b.width}:${b.height}`).join('|')}`}
                   boxes={boxes}
                   paperSize={paperSize}
+                  orientation={orientation}
                   backgroundColor={backgroundColor}
                   backgroundImage={backgroundImage}
                   frameTemplate={frameTemplate}
                   showPlaceholders={true}
                   className="rounded-lg shadow-xl max-h-[60vh]"
-                  width={paperSize === 'strip' ? '200px' : '500px'}
+                  width={paperSize === 'strip' ? '200px' : orientation === 'portrait' ? '300px' : '500px'}
+                  photoCount={photoCount || boxes.length}
+                  showCutMarks={showCutMarks}
                 />
               </div>
 

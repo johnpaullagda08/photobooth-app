@@ -6,6 +6,7 @@ import type { PhotoboothEvent } from '@/lib/events/types';
 import { Download, Printer, RotateCcw, Home, Loader2 } from 'lucide-react';
 import { saveLastOutput } from '@/lib/photos/lastOutput';
 import { PrintRenderer, usePrintDimensions } from '@/components/layout-editor';
+import { composeStripGrid } from '@/lib/printing/strip-grid-composer';
 
 interface CapturedPhoto {
   id: string;
@@ -25,26 +26,45 @@ export function ResultScreen({ event, photos, onNewSession, onRetake }: ResultSc
   const [compositeImage, setCompositeImage] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isComposing, setIsComposing] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
 
-  // Get proper print dimensions based on paper size
-  const printDimensions = usePrintDimensions(event.paperSize, 300);
+  // Get proper print dimensions based on paper size and orientation
+  const printDimensions = usePrintDimensions(
+    event.paperSize,
+    event.printLayout.photoCount || 4,
+    300,
+    event.orientation
+  );
 
   // Extract layout config for easier access
   const { boxes, backgroundColor, backgroundImage, frameTemplate } = event.printLayout;
 
-  // Calculate responsive container dimensions
+  // Calculate responsive container dimensions based on paper size and orientation
   const containerStyle = useMemo(() => {
-    // Strip = 2:6 (portrait), 4R = 6:4 (landscape)
-    const aspectRatio = event.paperSize === 'strip' ? 2 / 6 : 6 / 4;
+    if (event.paperSize === 'strip') {
+      return {
+        aspectRatio: '2 / 6',
+        maxHeight: 'calc(100vh - 280px)',
+        maxWidth: '280px',
+      };
+    }
 
+    // 4R mode: respect orientation
+    if (event.orientation === 'portrait') {
+      return {
+        aspectRatio: '4 / 6',
+        maxHeight: 'calc(100vh - 280px)',
+        maxWidth: '400px',
+      };
+    }
+
+    // Landscape
     return {
-      aspectRatio: event.paperSize === 'strip' ? '2 / 6' : '6 / 4',
-      // Max height constraint for viewport
+      aspectRatio: '6 / 4',
       maxHeight: 'calc(100vh - 280px)',
-      // Max width based on aspect ratio
-      maxWidth: event.paperSize === 'strip' ? '280px' : '600px',
+      maxWidth: '600px',
     };
-  }, [event.paperSize]);
+  }, [event.paperSize, event.orientation]);
 
   // Helper to load an image with proper error handling
   const loadImage = (src: string): Promise<HTMLImageElement> => {
@@ -71,108 +91,137 @@ export function ResultScreen({ event, photos, onNewSession, onRetake }: ResultSc
 
       // Use proper dimensions based on paper size
       const { width, height } = printDimensions;
-      canvas.width = width;
-      canvas.height = height;
 
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      let finalImage: string;
 
-      console.log(`Composing image: ${width}x${height} (${event.paperSize})`);
-
-      // ========================================
-      // LAYER HIERARCHY (matches PrintRenderer):
-      // 1. Background Color (base)
-      // 2. Background Image (above color)
-      // 3. Photo Boxes (main content)
-      // 4. Frame Overlay (above photos)
-      // ========================================
-
-      // LAYER 1: Background Color
-      ctx.fillStyle = backgroundColor || '#ffffff';
-      ctx.fillRect(0, 0, width, height);
-
-      // LAYER 2: Background Image
-      if (backgroundImage) {
+      // For strip mode, use composeStripGrid for side-by-side strips
+      if (event.paperSize === 'strip') {
+        console.log('Composing strip layout with side-by-side strips');
         try {
-          const bgImg = await loadImage(backgroundImage);
-          // Draw background image to cover the entire canvas
-          const bgRatio = bgImg.width / bgImg.height;
-          const canvasRatio = width / height;
+          const result = await composeStripGrid({
+            photos: photos.map(p => ({ id: p.id, dataUrl: p.dataUrl, timestamp: p.timestamp })),
+            photoCount: event.printLayout.photoCount || photos.length,
+            backgroundColor: backgroundColor || '#ffffff',
+            backgroundImage: backgroundImage,
+            frameTemplate: frameTemplate,
+            showCutMarks: event.printing.showCutMarks,
+            quality: 0.95,
+            // Pass user-customized boxes if they exist
+            customBoxes: boxes.length > 0 ? boxes : undefined,
+          });
+          finalImage = result.dataUrl;
+          console.log('Strip composition complete');
+        } catch (err) {
+          console.error('Failed to compose strip:', err);
+          setIsComposing(false);
+          return;
+        }
+      } else {
+        // For 4R mode, use manual composition
+        canvas.width = width;
+        canvas.height = height;
 
-          let sx = 0, sy = 0, sw = bgImg.width, sh = bgImg.height;
-          if (bgRatio > canvasRatio) {
-            // Image is wider - crop sides
-            sw = bgImg.height * canvasRatio;
-            sx = (bgImg.width - sw) / 2;
-          } else {
-            // Image is taller - crop top/bottom
-            sh = bgImg.width / canvasRatio;
-            sy = (bgImg.height - sh) / 2;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        console.log(`Composing 4R image: ${width}x${height}`);
+
+        // ========================================
+        // LAYER HIERARCHY (matches PrintRenderer):
+        // 1. Background Color (base)
+        // 2. Background Image (above color)
+        // 3. Photo Boxes (main content)
+        // 4. Frame Overlay (above photos)
+        // ========================================
+
+        // LAYER 1: Background Color
+        ctx.fillStyle = backgroundColor || '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+
+        // LAYER 2: Background Image
+        if (backgroundImage) {
+          try {
+            const bgImg = await loadImage(backgroundImage);
+            // Draw background image to cover the entire canvas
+            const bgRatio = bgImg.width / bgImg.height;
+            const canvasRatio = width / height;
+
+            let sx = 0, sy = 0, sw = bgImg.width, sh = bgImg.height;
+            if (bgRatio > canvasRatio) {
+              // Image is wider - crop sides
+              sw = bgImg.height * canvasRatio;
+              sx = (bgImg.width - sw) / 2;
+            } else {
+              // Image is taller - crop top/bottom
+              sh = bgImg.width / canvasRatio;
+              sy = (bgImg.height - sh) / 2;
+            }
+
+            ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, width, height);
+            console.log('Background image rendered');
+          } catch (err) {
+            console.error('Failed to load background image:', err);
+          }
+        }
+
+        // LAYER 3: Photos in their boxes
+        const photosToRender = Math.min(photos.length, boxes.length);
+        console.log(`Rendering ${photosToRender} photos into ${boxes.length} boxes`);
+
+        for (let i = 0; i < photosToRender; i++) {
+          const box = boxes[i];
+          const photo = photos[i];
+
+          if (!photo?.dataUrl) {
+            console.warn(`Photo ${i} has no dataUrl`);
+            continue;
           }
 
-          ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, width, height);
-          console.log('Background image rendered');
-        } catch (err) {
-          console.error('Failed to load background image:', err);
-        }
-      }
+          try {
+            const img = await loadImage(photo.dataUrl);
 
-      // LAYER 3: Photos in their boxes
-      const photosToRender = Math.min(photos.length, boxes.length);
-      console.log(`Rendering ${photosToRender} photos into ${boxes.length} boxes`);
+            // Convert percentage-based box coordinates to pixels
+            const x = (box.x / 100) * width;
+            const y = (box.y / 100) * height;
+            const w = (box.width / 100) * width;
+            const h = (box.height / 100) * height;
 
-      for (let i = 0; i < photosToRender; i++) {
-        const box = boxes[i];
-        const photo = photos[i];
+            // Draw photo with object-fit: cover (fills the box, crops excess)
+            const imgRatio = img.width / img.height;
+            const boxRatio = w / h;
 
-        if (!photo?.dataUrl) {
-          console.warn(`Photo ${i} has no dataUrl`);
-          continue;
-        }
+            let sx = 0, sy = 0, sw = img.width, sh = img.height;
+            if (imgRatio > boxRatio) {
+              // Image is wider than box - crop sides
+              sw = img.height * boxRatio;
+              sx = (img.width - sw) / 2;
+            } else {
+              // Image is taller than box - crop top/bottom
+              sh = img.width / boxRatio;
+              sy = (img.height - sh) / 2;
+            }
 
-        try {
-          const img = await loadImage(photo.dataUrl);
-
-          // Convert percentage-based box coordinates to pixels
-          const x = (box.x / 100) * width;
-          const y = (box.y / 100) * height;
-          const w = (box.width / 100) * width;
-          const h = (box.height / 100) * height;
-
-          // Draw photo with object-fit: cover (fills the box, crops excess)
-          const imgRatio = img.width / img.height;
-          const boxRatio = w / h;
-
-          let sx = 0, sy = 0, sw = img.width, sh = img.height;
-          if (imgRatio > boxRatio) {
-            // Image is wider than box - crop sides
-            sw = img.height * boxRatio;
-            sx = (img.width - sw) / 2;
-          } else {
-            // Image is taller than box - crop top/bottom
-            sh = img.width / boxRatio;
-            sy = (img.height - sh) / 2;
+            ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+            console.log(`Drew photo ${i + 1} at (${x.toFixed(0)}, ${y.toFixed(0)}) size ${w.toFixed(0)}x${h.toFixed(0)}`);
+          } catch (err) {
+            console.error(`Failed to load photo ${i}:`, err);
           }
-
-          ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
-          console.log(`Drew photo ${i + 1} at (${x.toFixed(0)}, ${y.toFixed(0)}) size ${w.toFixed(0)}x${h.toFixed(0)}`);
-        } catch (err) {
-          console.error(`Failed to load photo ${i}:`, err);
         }
+
+        // LAYER 4: Frame Overlay (on top of everything)
+        if (frameTemplate) {
+          try {
+            const frameImg = await loadImage(frameTemplate);
+            ctx.drawImage(frameImg, 0, 0, width, height);
+            console.log('Frame overlay rendered');
+          } catch (err) {
+            console.error('Failed to load frame template:', err);
+          }
+        }
+
+        finalImage = canvas.toDataURL('image/jpeg', 0.95);
       }
 
-      // LAYER 4: Frame Overlay (on top of everything)
-      if (frameTemplate) {
-        try {
-          const frameImg = await loadImage(frameTemplate);
-          ctx.drawImage(frameImg, 0, 0, width, height);
-          console.log('Frame overlay rendered');
-        } catch (err) {
-          console.error('Failed to load frame template:', err);
-        }
-      }
-
-      const finalImage = canvas.toDataURL('image/jpeg', 0.95);
       setCompositeImage(finalImage);
       setIsComposing(false);
 
@@ -186,7 +235,7 @@ export function ResultScreen({ event, photos, onNewSession, onRetake }: ResultSc
     };
 
     composeImage();
-  }, [photos, boxes, backgroundColor, backgroundImage, frameTemplate, printDimensions, event.id, event.paperSize]);
+  }, [photos, boxes, backgroundColor, backgroundImage, frameTemplate, printDimensions, event.id, event.paperSize, event.printLayout.photoCount, event.printing.showCutMarks]);
 
   // Handle download
   const handleDownload = () => {
@@ -285,17 +334,54 @@ export function ResultScreen({ event, photos, onNewSession, onRetake }: ResultSc
           className="relative flex items-center justify-center w-full h-full"
         >
           {compositeImage ? (
-            // Show the final composed image
-            <img
-              src={compositeImage}
-              alt="Photo output"
-              className="rounded-lg shadow-2xl object-contain"
+            // Show the final composed image with hover effect
+            <motion.div
+              className="relative overflow-hidden rounded-lg cursor-pointer"
               style={{
                 maxHeight: containerStyle.maxHeight,
                 maxWidth: containerStyle.maxWidth,
-                aspectRatio: containerStyle.aspectRatio,
               }}
-            />
+              onHoverStart={() => setIsHovered(true)}
+              onHoverEnd={() => setIsHovered(false)}
+              whileHover={{
+                scale: 1.03,
+                boxShadow: '0 0 40px rgba(255, 255, 255, 0.3), 0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 20,
+              }}
+            >
+              <motion.img
+                src={compositeImage}
+                alt="Photo output"
+                className="w-full h-full object-contain rounded-lg"
+                style={{
+                  aspectRatio: containerStyle.aspectRatio,
+                }}
+                animate={{
+                  filter: isHovered ? 'brightness(1.05)' : 'brightness(1)',
+                }}
+                transition={{ duration: 0.2 }}
+              />
+              {/* Shine effect overlay */}
+              <motion.div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.4) 45%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0.4) 55%, transparent 60%)',
+                  backgroundSize: '200% 100%',
+                }}
+                initial={{ backgroundPosition: '200% 0' }}
+                animate={{
+                  backgroundPosition: isHovered ? '-200% 0' : '200% 0',
+                }}
+                transition={{
+                  duration: 0.8,
+                  ease: 'easeInOut',
+                }}
+              />
+            </motion.div>
           ) : (
             // Show live preview using PrintRenderer while composing
             <div
@@ -309,12 +395,15 @@ export function ResultScreen({ event, photos, onNewSession, onRetake }: ResultSc
               <PrintRenderer
                 boxes={boxes}
                 paperSize={event.paperSize}
+                orientation={event.orientation}
                 backgroundColor={backgroundColor}
                 backgroundImage={backgroundImage}
                 frameTemplate={frameTemplate}
                 photos={photos}
                 showPlaceholders={false}
                 width="100%"
+                photoCount={event.printLayout.photoCount}
+                showCutMarks={event.printing.showCutMarks}
               />
               {/* Loading overlay */}
               {isComposing && (

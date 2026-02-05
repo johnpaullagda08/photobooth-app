@@ -3,9 +3,9 @@
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import type { PrintSize } from '@/types';
-import { PRINT_FORMATS } from '@/constants/config';
+import { PRINT_FORMATS, PRINT_CANVAS } from '@/constants/config';
 import { selectorItemVariants } from '@/components/animations/variants';
-import { Ruler } from 'lucide-react';
+import { Ruler, Columns, Image } from 'lucide-react';
 
 interface PrintSizeSelectorProps {
   selectedSize: PrintSize;
@@ -24,12 +24,15 @@ export function PrintSizeSelector({
     <div className={cn('flex flex-col gap-3', className)}>
       <label className="text-sm font-medium text-zinc-400 flex items-center gap-2">
         <Ruler className="w-4 h-4" />
-        Print Size
+        Print Layout
       </label>
 
       <div className="grid grid-cols-2 gap-3">
         {SIZES.map((size) => {
           const format = PRINT_FORMATS[size];
+          const isStrip = size === '2x6';
+          const Icon = isStrip ? Columns : Image;
+
           return (
             <motion.button
               key={size}
@@ -47,65 +50,67 @@ export function PrintSizeSelector({
               {/* Visual representation */}
               <div
                 className={cn(
-                  'rounded border-2',
+                  'rounded border-2 relative',
                   selectedSize === size
                     ? 'border-blue-400 bg-blue-400/20'
                     : 'border-zinc-600 bg-zinc-800'
                 )}
                 style={{
-                  width: size === '2x6' ? '24px' : '48px',
+                  width: '48px',
                   height: '72px',
                 }}
               >
-                {/* Photo slots */}
-                <div className="flex flex-col gap-0.5 p-0.5 h-full">
-                  {size === '2x6' ? (
-                    <>
+                {isStrip ? (
+                  // 2 strips side by side
+                  <div className="flex gap-0.5 p-0.5 h-full">
+                    {/* Left strip */}
+                    <div className="flex-1 flex flex-col gap-0.5">
                       {[1, 2, 3, 4].map((i) => (
                         <div
-                          key={i}
+                          key={`l-${i}`}
                           className="flex-1 bg-zinc-600 rounded-sm"
                           style={{ opacity: 0.5 + i * 0.1 }}
                         />
                       ))}
-                    </>
-                  ) : (
-                    <div className="flex gap-0.5 h-full">
-                      <div className="flex-1 flex flex-col gap-0.5">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className="flex-1 bg-zinc-600 rounded-sm"
-                            style={{ opacity: 0.5 + i * 0.1 }}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex-1 flex flex-col gap-0.5">
-                        {[1, 2, 3, 4].map((i) => (
-                          <div
-                            key={i}
-                            className="flex-1 bg-zinc-600 rounded-sm"
-                            style={{ opacity: 0.5 + i * 0.1 }}
-                          />
-                        ))}
-                      </div>
                     </div>
-                  )}
-                </div>
+                    {/* Right strip (identical) */}
+                    <div className="flex-1 flex flex-col gap-0.5">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div
+                          key={`r-${i}`}
+                          className="flex-1 bg-zinc-600 rounded-sm"
+                          style={{ opacity: 0.5 + i * 0.1 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  // 4R layout (2x2 grid)
+                  <div className="grid grid-cols-2 grid-rows-2 gap-0.5 p-0.5 h-full">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="bg-zinc-600 rounded-sm"
+                        style={{ opacity: 0.5 + i * 0.1 }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Label */}
               <div className="text-center">
                 <div
                   className={cn(
-                    'font-semibold text-lg',
+                    'font-semibold text-base flex items-center gap-1.5 justify-center',
                     selectedSize === size ? 'text-white' : 'text-zinc-300'
                   )}
                 >
-                  {format.label}
+                  <Icon className="w-4 h-4" />
+                  {isStrip ? '2× Strip' : '4R Photo'}
                 </div>
-                <div className="text-xs text-zinc-500">
-                  {format.width}×{format.height}px @ {format.dpi}DPI
+                <div className="text-xs text-zinc-500 mt-1">
+                  {PRINT_CANVAS.WIDTH}×{PRINT_CANVAS.HEIGHT}px
                 </div>
               </div>
             </motion.button>
@@ -114,11 +119,26 @@ export function PrintSizeSelector({
       </div>
 
       {/* Description */}
-      <p className="text-xs text-zinc-500 text-center">
-        {selectedSize === '2x6'
-          ? 'Classic photo strip format - single strip'
-          : 'Photo paper format - two strips side by side'}
-      </p>
+      <div className="text-xs text-zinc-500 text-center p-2 bg-zinc-800/50 rounded-lg">
+        {selectedSize === '2x6' ? (
+          <span>
+            <strong>2× Strip:</strong> Two identical 2×6 strips side-by-side on 4×6 paper
+          </span>
+        ) : (
+          <span>
+            <strong>4R Photo:</strong> Single layout fills the 4×6 paper
+          </span>
+        )}
+      </div>
+
+      {/* Technical specs */}
+      <div className="flex justify-center gap-4 text-xs text-zinc-600">
+        <span>Output: 4×6 inches</span>
+        <span>•</span>
+        <span>{PRINT_CANVAS.DPI} DPI</span>
+        <span>•</span>
+        <span>{PRINT_CANVAS.WIDTH}×{PRINT_CANVAS.HEIGHT}px</span>
+      </div>
     </div>
   );
 }
