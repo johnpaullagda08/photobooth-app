@@ -24,9 +24,17 @@
  *   Left Strip    Right Strip
  */
 
-import type { CapturedPhoto, Theme } from '@/types';
+import type { Theme } from '@/types';
 import type { BoxConfig } from '@/lib/events/types';
 import { applyFilterToCanvas, CANVAS_FILTERS } from '@/lib/canvas/filters';
+
+/** Simple photo interface - only dataUrl is required for composition */
+interface PhotoInput {
+  dataUrl: string;
+  id?: string;
+  timestamp?: number;
+  filterId?: string;
+}
 
 // ============================================
 // CONSTANTS - 4R Paper @ 300 DPI
@@ -69,8 +77,8 @@ export const GRID_LAYOUT = {
 // ============================================
 
 export interface StripGridOptions {
-  /** Captured photos to place in strip */
-  photos: CapturedPhoto[];
+  /** Photos to place in strip (only dataUrl is required) */
+  photos: PhotoInput[];
   /** Number of photo boxes */
   photoCount: number;
   /** Background color */
@@ -238,7 +246,7 @@ async function composeSingleStrip(
   offsetX: number,
   offsetY: number,
   options: {
-    photos: CapturedPhoto[];
+    photos: PhotoInput[];
     boxes: GridBox[];
     backgroundColor: string;
     backgroundImage?: string | null;
