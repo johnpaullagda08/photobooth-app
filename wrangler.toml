@@ -1,0 +1,14 @@
+# Cloudflare Pages configuration
+name = "photobooth"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "out"
+
+# Optional: Add custom headers
+# [headers]
+#   "/*" = { "X-Frame-Options" = "DENY" }
+
+# Optional: Add redirects
+# [[redirects]]
+#   from = "/old-path"
+#   to = "/new-path"
+#   status = 301
